@@ -4,8 +4,11 @@
   "description": "Web Scraper para la plataforma de educación \"Canvas\"",
   "main": "index.js",
   "dependencies": {
+    "chalk": "^3.0.0",
     "commander": "^4.0.1",
-    "foxr": "^0.10.0"
+    "dotenv": "^8.2.0",
+    "foxr": "^0.10.0",
+    "inquirer": "^7.0.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^2.8.0",
