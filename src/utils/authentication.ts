@@ -1,8 +1,8 @@
 import { AuthenticationFailedError } from '../types/authentication';
 import Configstore from 'configstore';
-import { name as packageName } from '../../package.json';
 import * as inquirer from 'inquirer';
-import foxr from 'foxr';
+import { launchBrowser, navigateToCanvas } from './browser';
+import { name as packageName } from '../../package.json';
 
 const questions = [
   { name: 'username', message: 'What is your canvas username?' },
@@ -68,10 +68,9 @@ export async function ensureLogin(providedInfo: ProvidedAuthInfo): Promise<AuthI
 export async function auth(username: string, password: string): Promise<string | null> {
   try {
     console.log({ username, password });
-    const browser = await foxr.connect();
-    const page = await browser.newPage();
+    const browser = await launchBrowser();
+    const page = await navigateToCanvas(browser);
 
-    await page.goto('https://example.com');
     await page.screenshot({ path: 'example.png' });
     await browser.close();
 

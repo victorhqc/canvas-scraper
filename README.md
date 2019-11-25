@@ -30,17 +30,18 @@ herramientas como Pandoc y LateX.
 
 ### Requisitos
 
-- Rust >= 1.39
+- Node >= 12.13.1
+- npm >= 6.12.1
 
 ### Ejecución
 
 ```sh
-cargo run
+# Development
+npm run build -- --watch
 
-cargo run login
+# Production
+NODE_ENV=production npm run build
 
-cargo run login -- --help
 
-## Debug mode
-CARGO_LOG=canvas-scraper=debug cargo run
+node ./dist/main.js login
 ```
