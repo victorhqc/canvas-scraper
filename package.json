@@ -1,16 +1,24 @@
 {
   "name": "canvas-scraper",
+  "private": true,
   "version": "1.0.0",
   "description": "Web Scraper para la plataforma de educación \"Canvas\"",
-  "main": "index.js",
+  "main": "src/bin/index.js",
+  "scripts": {
+    "lint-staged": "lint-staged",
+    "build": "webpack"
+  },
   "dependencies": {
     "chalk": "^3.0.0",
     "commander": "^4.0.1",
+    "configstore": "^5.0.0",
     "dotenv": "^8.2.0",
     "foxr": "^0.10.0",
     "inquirer": "^7.0.0"
   },
   "devDependencies": {
+    "@types/configstore": "^4.0.0",
+    "@types/inquirer": "^6.5.0",
     "@typescript-eslint/eslint-plugin": "^2.8.0",
     "@typescript-eslint/parser": "^2.8.0",
     "eslint": "^6.7.0",
@@ -24,6 +32,7 @@
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.2",
     "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10",
     "webpack-node-externals": "^1.7.2"
   },
   "husky": {
@@ -31,14 +40,11 @@
       "pre-commit": "npm run lint-staged"
     }
   },
-  "scripts": {
-    "lint-staged": "lint-staged"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/victorhqc/canvas-scraper.git"
   },
-  "author": "",
+  "author": "Victor Hugo Quiroz Castro <victorhqc@gmail.com>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/victorhqc/canvas-scraper/issues"

@@ -1,9 +1,10 @@
-require('dotenv').config();
-
+import dotenv from 'dotenv';
 import { Command } from 'commander';
 import { loginCommand } from './login';
 
 const packageJson = require('../../package.json') as PackageJson;
+
+dotenv.config({});
 
 const program = new Command();
 

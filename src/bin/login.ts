@@ -1,11 +1,10 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import dotenv from 'dotenv';
 import { saveAuthInfo, ProvidedAuthInfo, freshLogin } from '../utils/authentication';
 import { handleCommand } from '../utils/command-handler';
 
-export class AuthenticationFailedError extends Error {
-  contextMessage = 'Authentication Failed';
-}
+dotenv.config({});
 
 async function login(program: Command): Promise<string> {
   const authInfo = await freshLogin(program as ProvidedAuthInfo);
