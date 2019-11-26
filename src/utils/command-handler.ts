@@ -11,6 +11,7 @@ export function handleCommand(commandAction: (program: Command) => Promise<strin
     } catch (error) {
       console.log(chalk.bold.red(error.contextMessage || 'Some error occurred'));
       console.log(chalk.red(error));
+      process.exit(1);
     }
   };
 }

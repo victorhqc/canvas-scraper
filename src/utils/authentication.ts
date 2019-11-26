@@ -1,7 +1,7 @@
 import { AuthenticationFailedError } from '../types/authentication';
 import Configstore from 'configstore';
 import * as inquirer from 'inquirer';
-import { launchBrowser, navigateToCanvas } from './browser';
+import { launchBrowser, navigateToCanvas, buildGetElementHandle, waitFor } from './browser';
 import { name as packageName } from '../../package.json';
 
 const questions = [
@@ -22,7 +22,7 @@ interface AuthInfo {
 
 export function saveAuthInfo(authInfo: AuthInfo): string {
   const config = new Configstore(packageName);
-  config.set('token', authInfo.cookie);
+  config.set('cookie', authInfo.cookie);
   return config.path;
 }
 
@@ -66,17 +66,24 @@ export async function ensureLogin(providedInfo: ProvidedAuthInfo): Promise<AuthI
 }
 
 export async function auth(username: string, password: string): Promise<string | null> {
-  try {
-    console.log({ username, password });
-    const browser = await launchBrowser();
-    const page = await navigateToCanvas(browser);
+  const browser = await launchBrowser();
+  const page = await navigateToCanvas(browser, '/login/canvas');
+  const getElement = buildGetElementHandle(page);
 
-    await page.screenshot({ path: 'example.png' });
-    await browser.close();
+  const usernameInput = await getElement('#pseudonym_session_unique_id');
+  const passwordInput = await getElement('#pseudonym_session_password');
 
-    return 'foo';
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
+  await usernameInput.type(username);
+  await passwordInput.type(password);
+
+  const submitButton = await getElement('.Button--login');
+  await submitButton.click();
+
+  await page.screenshot({ path: 'example.png' });
+
+  await waitFor(page, '#dashboard');
+
+  await browser.close();
+
+  return 'foo';
 }
