@@ -32,6 +32,14 @@ export function buildGetElementHandle(page: TPage) {
   };
 }
 
+/**
+ * Waits for an element to appear in page. It will try to fetch it every 250 ms. And will fail if
+ * it doesn't succeeds before timeout.
+ *
+ * ```js
+ * const result = await waitFor(page, '#some-div');
+ * ```
+ */
 export async function waitFor(
   page: TPage,
   selector: string,
