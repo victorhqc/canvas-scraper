@@ -15,7 +15,7 @@ module.exports = {
   },
   entry: {
     main: './src/bin/index.ts',
-    login: './src/bin/login.ts',
+    parse: './src/bin/parse.ts',
   },
   externals: [nodeExternals()],
   output: {

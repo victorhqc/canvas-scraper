@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { Command } from 'commander';
-import { loginCommand } from './login';
+import { parseCommand } from './parse';
 
 const packageJson = require('../../package.json') as PackageJson;
 
@@ -13,7 +13,7 @@ program
   .description('Generate Markdown file from courses.')
   .version(packageJson.version);
 
-loginCommand(program);
+parseCommand(program);
 program.parse(process.argv);
 
 interface PackageJson {

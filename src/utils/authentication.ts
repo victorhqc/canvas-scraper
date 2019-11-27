@@ -1,30 +1,22 @@
 import { AuthenticationFailedError } from '../types/authentication';
-import Configstore from 'configstore';
 import * as inquirer from 'inquirer';
-import { launchBrowser, navigateToCanvas, buildGetElementHandle, waitFor } from './browser';
-import { name as packageName } from '../../package.json';
+import { TPage } from 'foxr';
+import { buildGetElementHandle, waitFor } from './browser';
 
 const questions = [
   { name: 'username', message: 'What is your canvas username?' },
   { name: 'password', message: 'What is your canvas password?', type: 'password' },
 ] as const;
+
 type RequiredParameter = typeof questions[number]['name'];
+
 export type ProvidedAuthInfo = {
   [key in RequiredParameter]?: string;
 };
+
 type Answers = {
   [key in RequiredParameter]: string;
 };
-
-interface AuthInfo {
-  cookie: string;
-}
-
-export function saveAuthInfo(authInfo: AuthInfo): string {
-  const config = new Configstore(packageName);
-  config.set('cookie', authInfo.cookie);
-  return config.path;
-}
 
 export async function gatherLoginInput(providedInfo?: ProvidedAuthInfo): Promise<Answers> {
   const getOption = (parameter: RequiredParameter): string | undefined =>
@@ -41,33 +33,12 @@ export async function gatherLoginInput(providedInfo?: ProvidedAuthInfo): Promise
   return Object.fromEntries(entries) as Answers;
 }
 
-export async function freshLogin(providedInfo: ProvidedAuthInfo): Promise<AuthInfo> {
+export async function freshLogin(page: TPage, providedInfo: ProvidedAuthInfo): Promise<void> {
   const { username, password } = await gatherLoginInput(providedInfo);
-  const cookie = await auth(username, password);
-
-  if (!cookie) {
-    throw new AuthenticationFailedError('Unable to login');
-  }
-
-  return { cookie };
+  await auth(page, username, password);
 }
 
-export async function ensureLogin(providedInfo: ProvidedAuthInfo): Promise<AuthInfo> {
-  const config = new Configstore(packageName);
-  if (providedInfo.username || providedInfo.password) {
-    return freshLogin(providedInfo);
-  }
-
-  const cookie = config.get('cookie');
-  if (cookie) {
-    return { cookie };
-  }
-  return freshLogin(providedInfo);
-}
-
-export async function auth(username: string, password: string): Promise<string | null> {
-  const browser = await launchBrowser();
-  const page = await navigateToCanvas(browser, '/login/canvas');
+export async function auth(page: TPage, username: string, password: string): Promise<void> {
   const getElement = buildGetElementHandle(page);
 
   const usernameInput = await getElement('#pseudonym_session_unique_id');
@@ -81,9 +52,8 @@ export async function auth(username: string, password: string): Promise<string |
 
   await page.screenshot({ path: 'example.png' });
 
-  await waitFor(page, '#dashboard');
-
-  await browser.close();
-
-  return 'foo';
+  await waitFor(page, '#dashboard').catch(e => {
+    throw new AuthenticationFailedError(e);
+  });
+  console.log('DONE!');
 }

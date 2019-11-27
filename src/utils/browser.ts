@@ -1,10 +1,12 @@
 import foxr, { TBrowser, TPage, TElementHandle } from 'foxr';
+import uuidv4 from 'uuid/v4';
 import getConfig from './config';
 
 export function launchBrowser(): Promise<TBrowser> {
+  const profile = `/tmp/canvas_unir_${uuidv4()}`;
   return foxr.launch({
     headless: false,
-    args: ['-marionette', '-safe-mode', '-no-remote', '-profile', '/tmp/firefox_test-test_123'],
+    args: ['-marionette', '-safe-mode', '-no-remote', '-profile', profile],
     executablePath: getConfig().firefoxPath,
   });
 }
