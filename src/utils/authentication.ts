@@ -1,7 +1,8 @@
 import { AuthenticationFailedError } from '../types/authentication';
 import * as inquirer from 'inquirer';
-import { TPage } from 'foxr';
-import { buildGetElementHandle, waitFor } from './browser';
+// import { TPage as Page } from 'foxr';
+import { Page } from 'puppeteer';
+import { buildGetElementHandle } from './browser';
 
 const questions = [
   { name: 'username', message: 'What is your canvas username?' },
@@ -33,12 +34,12 @@ export async function gatherLoginInput(providedInfo?: ProvidedAuthInfo): Promise
   return Object.fromEntries(entries) as Answers;
 }
 
-export async function freshLogin(page: TPage, providedInfo: ProvidedAuthInfo): Promise<void> {
+export async function freshLogin(page: Page, providedInfo: ProvidedAuthInfo): Promise<void> {
   const { username, password } = await gatherLoginInput(providedInfo);
   await auth(page, username, password);
 }
 
-export async function auth(page: TPage, username: string, password: string): Promise<void> {
+export async function auth(page: Page, username: string, password: string): Promise<void> {
   const getElement = buildGetElementHandle(page);
 
   const usernameInput = await getElement('#pseudonym_session_unique_id');
@@ -52,8 +53,7 @@ export async function auth(page: TPage, username: string, password: string): Pro
 
   await page.screenshot({ path: 'example.png' });
 
-  await waitFor(page, '#dashboard').catch(e => {
+  await page.waitFor('#dashboard').catch(e => {
     throw new AuthenticationFailedError(e);
   });
-  console.log('DONE!');
 }

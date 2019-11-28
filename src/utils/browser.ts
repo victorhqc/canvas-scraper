@@ -1,29 +1,35 @@
-import foxr, { TBrowser, TPage, TElementHandle } from 'foxr';
+// import foxr, {
+//   TBrowser as Browser,
+//   TPage as Page,
+//   TElementHandle as ElementHandle,
+// } from 'foxr';
+import puppeteer, { Browser, Page, ElementHandle } from 'puppeteer';
 import uuidv4 from 'uuid/v4';
 import getConfig from './config';
 
-export function launchBrowser(): Promise<TBrowser> {
+export function launchBrowser(): Promise<Browser> {
   const profile = `/tmp/canvas_unir_${uuidv4()}`;
-  return foxr.launch({
-    headless: false,
+  return puppeteer.launch({
+    // headless: false,
     args: ['-marionette', '-safe-mode', '-no-remote', '-profile', profile],
-    executablePath: getConfig().firefoxPath,
+    // executablePath: getConfig().firefoxPath,
   });
 }
 
 /**
  * It'll make a **new** page and navigate to canvas.
  */
-export async function navigateToCanvas(browser: TBrowser, path?: string): Promise<TPage> {
+export async function navigateToCanvas(browser: Browser, path?: string): Promise<Page> {
   const page = await browser.newPage();
 
   await page.goto(`${getConfig().canvasHost}${path}`);
+  await page.bringToFront();
 
   return page;
 }
 
-export function buildGetElementHandle(page: TPage) {
-  return async (selector: string): Promise<TElementHandle> => {
+export function buildGetElementHandle(page: Page) {
+  return async (selector: string): Promise<ElementHandle> => {
     const element = await page.$(selector);
 
     if (!element) {
@@ -43,12 +49,12 @@ export function buildGetElementHandle(page: TPage) {
  * ```
  */
 export async function waitFor(
-  page: TPage,
+  page: Page,
   selector: string,
   timeout = 5000
-): Promise<TElementHandle> {
+): Promise<ElementHandle> {
   let interval: NodeJS.Timeout | undefined;
-  const tryToFetchElement = (): Promise<TElementHandle> =>
+  const tryToFetchElement = (): Promise<ElementHandle> =>
     new Promise(resolve => {
       const checkForElement = async (): Promise<void> => {
         const element = await page.$(selector);

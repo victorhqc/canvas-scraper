@@ -3,27 +3,32 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
 import { ProvidedAuthInfo, freshLogin } from '../utils/authentication';
+import { chooseCourse } from '../utils/courses';
 import { handleCommand } from '../utils/command-handler';
 
 dotenv.config({});
 
-async function parse(program: Command): Promise<string> {
+async function parse(command: Command): Promise<void> {
   const browser = await launchBrowser();
   const page = await navigateToCanvas(browser, '/login/canvas');
 
-  await freshLogin(page, program as ProvidedAuthInfo);
-  return chalk.blue('Parsed completed! (shmaybe??)');
+  await freshLogin(page, command as ProvidedAuthInfo);
+  await chooseCourse(page, command);
+
+  chalk.blue('Parsed completed! (shmaybe??)');
+
+  process.exit(0);
 }
 
-export function parseOptions(program: Command): Command {
-  return program
+export function parseOptions(command: Command): Command {
+  return command
     .option('-u, --username <username>', 'Canvas username, example: ABCD012345')
     .option('-p, --password <password>', 'Password');
 }
 
-export function parseCommand(program: Command): Command {
+export function parseCommand(command: Command): Command {
   return parseOptions(
-    program
+    command
       .command('parse')
       .description('Parse a Canvas course')
       .action(handleCommand(parse))
