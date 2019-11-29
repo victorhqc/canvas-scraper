@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
 import { ProvidedAuthInfo, freshLogin } from '../utils/authentication';
-import { chooseCourse } from '../utils/courses';
+import { getAvailableCourses, chooseCourse, navigateToCourse } from '../utils/courses';
 import { handleCommand } from '../utils/command-handler';
 
 dotenv.config({});
@@ -13,7 +13,10 @@ async function parse(command: Command): Promise<void> {
   const page = await navigateToCanvas(browser, '/login/canvas');
 
   await freshLogin(page, command as ProvidedAuthInfo);
-  await chooseCourse(page, command);
+
+  const courses = await getAvailableCourses(page);
+  const chosenCourse = await chooseCourse(courses);
+  await navigateToCourse(page, courses, chosenCourse);
 
   chalk.blue('Parsed completed! (shmaybe??)');
 

@@ -51,8 +51,6 @@ export async function auth(page: Page, username: string, password: string): Prom
   const submitButton = await getElement('.Button--login');
   await submitButton.click();
 
-  await page.screenshot({ path: 'example.png' });
-
   await page.waitFor('#dashboard').catch(e => {
     throw new AuthenticationFailedError(e);
   });
