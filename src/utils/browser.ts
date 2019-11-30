@@ -19,10 +19,13 @@ export function launchBrowser(): Promise<Browser> {
 /**
  * It'll make a **new** page and navigate to canvas.
  */
-export async function navigateToCanvas(browser: Browser, path?: string): Promise<Page> {
-  const page = await browser.newPage();
+export function navigateToCanvas(browser: Browser, path?: string): Promise<Page> {
+  return navigateInNewPage(browser, `${getConfig().canvasHost}${path}`);
+}
 
-  await page.goto(`${getConfig().canvasHost}${path}`);
+export async function navigateInNewPage(browser: Browser, url: string): Promise<Page> {
+  const page = await browser.newPage();
+  await page.goto(url);
   await page.bringToFront();
 
   return page;

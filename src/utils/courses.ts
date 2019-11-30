@@ -1,8 +1,8 @@
 // import { TPage as Page } from 'foxr';
-import { Page } from 'puppeteer';
+import { Browser, Page } from 'puppeteer';
 import chalk from 'chalk';
 import wait from './wait';
-import { MissingElementError, buildGetElementHandle } from './browser';
+import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
 import * as inquirer from 'inquirer';
 
 export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise<Course[]> {
@@ -64,9 +64,23 @@ export async function navigateToCourse(
 
   // Damn iframes
   await wait();
-
-  await page.screenshot({ path: 'example.png' });
 }
+
+export async function loadTopicsIframe(browser: Browser, page: Page): Promise<Page> {
+  const uri = await page.$eval('input#custom_url', (e: Element) => e.getAttribute('value'));
+  if (!uri) {
+    throw new NoCourseTopicsUrl();
+  }
+  return navigateInNewPage(browser, uri);
+}
+
+// export async function exploreTopics(page: Page): Promise<void> {
+//   const topicTabs = page.$$('#maintab li > a');
+//
+//   for (const topicTab for topicTabs) {
+//
+//   }
+// }
 
 interface Course {
   name: string;
@@ -79,4 +93,8 @@ interface ChosenCourse {
 
 export class NoCoursesError extends Error {
   contextMessage = "Can't fetch courses";
+}
+
+export class NoCourseTopicsUrl extends Error {
+  contextMessage = "Can't find course topics url";
 }
