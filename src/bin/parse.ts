@@ -8,6 +8,7 @@ import {
   chooseCourse,
   navigateToCourse,
   loadTopicsIframe,
+  parseTopics,
 } from '../utils/courses';
 import { handleCommand } from '../utils/command-handler';
 
@@ -26,6 +27,7 @@ async function parse(command: Command): Promise<void> {
 
   const iframePage = await loadTopicsIframe(browser, page);
   await iframePage.screenshot({ path: 'screenshot_topics.png' });
+  await parseTopics(browser, iframePage);
 
   chalk.blue('Parsed completed! (shmaybe??)');
 

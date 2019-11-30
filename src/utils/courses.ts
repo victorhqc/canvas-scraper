@@ -74,13 +74,40 @@ export async function loadTopicsIframe(browser: Browser, page: Page): Promise<Pa
   return navigateInNewPage(browser, uri);
 }
 
-// export async function exploreTopics(page: Page): Promise<void> {
-//   const topicTabs = page.$$('#maintab li > a');
-//
-//   for (const topicTab for topicTabs) {
-//
-//   }
-// }
+export async function exploreAndTargetTopics(page: Page): Promise<TopicTargetIndexes> {
+  const links = await page.$$eval('a[title="Ideas clave"]', links =>
+    links.reduce<TopicTargetIndexes>((acc, link, index) => {
+      if (link.innerHTML.match(/estudiar este tema/gi)) {
+        link.setAttribute('data-topic-target', index.toString());
+        return [...acc, index];
+      }
+
+      return acc;
+    }, [])
+  );
+
+  return links;
+}
+
+export async function parseTopics(browser: Browser, page: Page): Promise<void> {
+  const courseUrl = page.url();
+  console.log('URL?', courseUrl);
+  const topicIndexes = await exploreAndTargetTopics(page);
+
+  for (const index of topicIndexes) {
+    const topicPage = await navigateInNewPage(browser, courseUrl);
+    const getElement = buildGetElementHandle(topicPage);
+    await topicPage.waitFor('#maintab');
+    await exploreAndTargetTopics(topicPage);
+    await topicPage.screenshot({ path: `refreshed_${index}.png` });
+    const link = await getElement(`a[data-topic-target="${index}"]`);
+    await link.click();
+    await wait(250);
+    await topicPage.screenshot({ path: `topic_${index}.png` });
+  }
+}
+
+type TopicTargetIndexes = number[];
 
 interface Course {
   name: string;
