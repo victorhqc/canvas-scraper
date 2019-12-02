@@ -1,5 +1,5 @@
 // import { TPage as Page } from 'foxr';
-import { Browser, Page } from 'puppeteer';
+import { Browser, Page, JSHandle } from 'puppeteer';
 import chalk from 'chalk';
 import wait from './wait';
 import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
@@ -21,6 +21,7 @@ export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise
       throw new NoCoursesError();
     }
 
+    await wait(100);
     return getAvailableCourses(page, retriedTimes + 1);
   }
 
@@ -54,19 +55,14 @@ export async function navigateToCourse(
     `.ic-DashboardCard__box .ic-DashboardCard:nth-child(${chosenCourse.index + 1})`
   );
   await courseCard.click();
-
-  await page.waitFor('[aria-label="Menú de navegación de cursos"]');
+  await page.waitForNavigation();
 
   const topicsListElement = await getElement('li.section a[title="Temas"]');
   await topicsListElement.click();
-
-  await page.waitFor('iframe#tool_content');
-
-  // Damn iframes
-  await wait();
+  await page.waitForNavigation();
 }
 
-export async function loadTopicsIframe(browser: Browser, page: Page): Promise<Page> {
+export async function loadTopicsIframeFromCoursePage(browser: Browser, page: Page): Promise<Page> {
   const uri = await page.$eval('input#custom_url', (e: Element) => e.getAttribute('value'));
   if (!uri) {
     throw new NoCourseTopicsUrl();
@@ -74,40 +70,84 @@ export async function loadTopicsIframe(browser: Browser, page: Page): Promise<Pa
   return navigateInNewPage(browser, uri);
 }
 
-export async function exploreAndTargetTopics(page: Page): Promise<TopicTargetIndexes> {
-  const links = await page.$$eval('a[title="Ideas clave"]', links =>
-    links.reduce<TopicTargetIndexes>((acc, link, index) => {
-      if (link.innerHTML.match(/estudiar este tema/gi)) {
-        link.setAttribute('data-topic-target', index.toString());
-        return [...acc, index];
-      }
-
-      return acc;
-    }, [])
-  );
-
-  return links;
-}
-
 export async function parseTopics(browser: Browser, page: Page): Promise<void> {
-  const courseUrl = page.url();
-  console.log('URL?', courseUrl);
-  const topicIndexes = await exploreAndTargetTopics(page);
+  const tabs = await getTopicTabs(page);
 
-  for (const index of topicIndexes) {
-    const topicPage = await navigateInNewPage(browser, courseUrl);
-    const getElement = buildGetElementHandle(topicPage);
-    await topicPage.waitFor('#maintab');
-    await exploreAndTargetTopics(topicPage);
-    await topicPage.screenshot({ path: `refreshed_${index}.png` });
-    const link = await getElement(`a[data-topic-target="${index}"]`);
-    await link.click();
-    await wait(250);
-    await topicPage.screenshot({ path: `topic_${index}.png` });
+  for (const [tabIndex] of tabs.entries()) {
+    await navigateToCourseByIndex(browser, page.url(), tabIndex);
   }
 }
 
-type TopicTargetIndexes = number[];
+async function getTopicTabs(page: Page): Promise<JSHandle[]> {
+  const tabs = await page.$$('#maintab li');
+  return tabs;
+}
+
+/**
+ * Navigates to a new page. This will allow us to avoid any pollution to the original page and
+ * habe a blank canvas in each iteration.
+ */
+async function navigateToCourseByIndex(
+  browser: Browser,
+  pageUrl: string,
+  activeTabIndex: number
+): Promise<void> {
+  const page = await navigateInNewPage(browser, pageUrl);
+
+  await clickTopicByIndex(page, activeTabIndex);
+  await parseTopicTitles(page, activeTabIndex);
+
+  const topics = await getTopics(page);
+
+  for (const [index] of topics.entries()) {
+    await navigateToTopicByIndex(browser, pageUrl, activeTabIndex, index);
+  }
+}
+
+async function clickTopicByIndex(page: Page, activeTabIndex: number): Promise<void> {
+  const getElement = buildGetElementHandle(page);
+  const tab = await getElement(`#maintab li:nth-child(${activeTabIndex + 1})`);
+  await tab.click();
+}
+
+async function parseTopicTitles(page: Page, activeTabIndex: number): Promise<void> {
+  await page.$$eval(
+    `#tcontent${activeTabIndex + 1} li:nth-child(1) a[title="Ideas clave"]`,
+    (titles: Element[]) => {
+      titles.forEach((title, index) => {
+        title.setAttribute('data-topic-index', index.toString());
+      });
+    }
+  );
+}
+
+/**
+ * Navigating to each topic will involve opening a fresh page as well.
+ */
+async function navigateToTopicByIndex(
+  browser: Browser,
+  pageUrl: string,
+  activeTabIndex: number,
+  activeTopicIndex: number
+): Promise<void> {
+  const page = await navigateInNewPage(browser, pageUrl);
+  await parseTopicTitles(page, activeTabIndex);
+  const getElement = buildGetElementHandle(page);
+
+  const topicTitle = await getElement(`[data-topic-index="${activeTopicIndex}"]`);
+  await topicTitle.click();
+
+  await page.waitForNavigation();
+
+  await page.screenshot({
+    path: `screenshots/tab_${activeTabIndex}_topic_${activeTopicIndex}.png`,
+  });
+}
+
+async function getTopics(page: Page): Promise<JSHandle[]> {
+  const topics = await page.$$('[data-topic-index]');
+  return topics;
+}
 
 interface Course {
   name: string;

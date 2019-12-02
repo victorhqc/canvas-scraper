@@ -10,7 +10,7 @@ import getConfig from './config';
 export function launchBrowser(): Promise<Browser> {
   const profile = `/tmp/canvas_unir_${uuidv4()}`;
   return puppeteer.launch({
-    // headless: false,
+    headless: false,
     args: ['-marionette', '-safe-mode', '-no-remote', '-profile', profile],
     // executablePath: getConfig().firefoxPath,
   });
