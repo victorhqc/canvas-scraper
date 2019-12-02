@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import chalk from 'chalk';
 import dotenv from 'dotenv';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
 import { ProvidedAuthInfo, freshLogin } from '../utils/authentication';
@@ -11,24 +10,30 @@ import {
   parseTopics,
 } from '../utils/courses';
 import { handleCommand } from '../utils/command-handler';
+import logger from '../utils/logger';
 
 dotenv.config({});
 
 async function parse(command: Command): Promise<void> {
   const browser = await launchBrowser();
+  logger.info('Browser initialized');
   const page = await navigateToCanvas(browser, '/login/canvas');
+  logger.info('Navigated to login page');
 
   await freshLogin(page, command as ProvidedAuthInfo);
+  logger.info('Authentication succeeded');
 
   const courses = await getAvailableCourses(page);
+  logger.info('Found available courses');
   const chosenCourse = await chooseCourse(courses);
   await navigateToCourse(page, courses, chosenCourse);
+  logger.info('Navigated to chosen course');
 
   const iframePage = await loadTopicsIframeFromCoursePage(browser, page);
+  logger.info('Navigated to course topics (iframe)');
   await parseTopics(browser, iframePage);
 
-  chalk.blue('Parsed completed! (shmaybe??)');
-
+  logger.info('Parsing succeeded');
   process.exit(0);
 }
 

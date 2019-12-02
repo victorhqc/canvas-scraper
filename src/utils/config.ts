@@ -2,12 +2,14 @@ export default function getConfig(): Config {
   return {
     firefoxPath: getEnvRequired('FIREFOX_PATH'),
     canvasHost: getEnvRequired('CANVAS_HOST'),
+    headless: getEnvBoolean('HEADLESS'),
   };
 }
 
 export interface Config {
   firefoxPath: string;
   canvasHost: string;
+  headless: boolean;
 }
 
 export function getEnvRequired(key: string): string {

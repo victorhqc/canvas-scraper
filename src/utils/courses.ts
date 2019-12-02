@@ -2,8 +2,9 @@
 import { Browser, Page, JSHandle } from 'puppeteer';
 import chalk from 'chalk';
 import wait from './wait';
-import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
 import * as inquirer from 'inquirer';
+import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
+import logger from './logger';
 
 export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise<Course[]> {
   const boxHandle = await page.$('.ic-DashboardCard__box');
@@ -22,6 +23,7 @@ export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise
     }
 
     await wait(100);
+    logger.warn(`Couldn't find courses, will try again (${retriedTimes + 1})`);
     return getAvailableCourses(page, retriedTimes + 1);
   }
 
@@ -74,6 +76,7 @@ export async function parseTopics(browser: Browser, page: Page): Promise<void> {
   const tabs = await getTopicTabs(page);
 
   for (const [tabIndex] of tabs.entries()) {
+    logger.debug(`Parsing topic tab: (${tabIndex + 1})`);
     await navigateToCourseByIndex(browser, page.url(), tabIndex);
   }
 }
@@ -100,6 +103,7 @@ async function navigateToCourseByIndex(
   const topics = await getTopics(page);
 
   for (const [index] of topics.entries()) {
+    logger.debug(`Parsing topic: (${index + 1})`);
     await navigateToTopicByIndex(browser, pageUrl, activeTabIndex, index);
   }
 }

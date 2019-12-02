@@ -1,5 +1,5 @@
-import chalk from 'chalk';
 import { Command } from 'commander';
+import logger from './logger';
 
 export function handleCommand(commandAction: (program: Command) => Promise<string | void>) {
   return async (program: Command) => {
@@ -9,8 +9,9 @@ export function handleCommand(commandAction: (program: Command) => Promise<strin
         console.log(result);
       }
     } catch (error) {
-      console.log(chalk.bold.red(error.contextMessage || 'Some error occurred'));
-      console.log(chalk.red(error));
+      const errorMessage = error.contextMessage || 'Some error occurred';
+      logger.error(errorMessage);
+      logger.error(error);
       process.exit(1);
     }
   };
