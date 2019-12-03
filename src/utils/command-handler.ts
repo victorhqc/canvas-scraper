@@ -9,6 +9,7 @@ export function handleCommand(commandAction: (program: Command) => Promise<strin
         console.log(result);
       }
     } catch (error) {
+      console.log('FAIL', error);
       const errorMessage = error.contextMessage || 'Some error occurred';
       logger.error(errorMessage);
       logger.error(error);

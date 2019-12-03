@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import wait from './wait';
 import * as inquirer from 'inquirer';
 import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
+import { parseContentChunks } from './content';
 import logger from './logger';
 
 export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise<Course[]> {
@@ -74,7 +75,6 @@ export async function loadTopicsIframeFromCoursePage(browser: Browser, page: Pag
 
 export async function parseTopics(browser: Browser, page: Page): Promise<void> {
   const tabs = await getTopicTabs(page);
-
   for (const [tabIndex] of tabs.entries()) {
     logger.debug(`Parsing topic tab: (${tabIndex + 1})`);
     await navigateToCourseByIndex(browser, page.url(), tabIndex);
@@ -108,6 +108,11 @@ async function navigateToCourseByIndex(
   }
 }
 
+async function getTopics(page: Page): Promise<JSHandle[]> {
+  const topics = await page.$$('[data-topic-index]');
+  return topics;
+}
+
 async function clickTopicByIndex(page: Page, activeTabIndex: number): Promise<void> {
   const getElement = buildGetElementHandle(page);
   const tab = await getElement(`#maintab li:nth-child(${activeTabIndex + 1})`);
@@ -136,21 +141,20 @@ async function navigateToTopicByIndex(
 ): Promise<void> {
   const page = await navigateInNewPage(browser, pageUrl);
   await parseTopicTitles(page, activeTabIndex);
-  const getElement = buildGetElementHandle(page);
 
-  const topicTitle = await getElement(`[data-topic-index="${activeTopicIndex}"]`);
-  await topicTitle.click();
-
-  await page.waitForNavigation();
-
-  await page.screenshot({
-    path: `screenshots/tab_${activeTabIndex}_topic_${activeTopicIndex}.png`,
-  });
+  await Promise.all([
+    page.click(`[data-topic-index="${activeTopicIndex}"]`),
+    page.waitForNavigation(),
+  ]);
+  await parseTopicContent(page);
 }
 
-async function getTopics(page: Page): Promise<JSHandle[]> {
-  const topics = await page.$$('[data-topic-index]');
-  return topics;
+async function parseTopicContent(page: Page): Promise<void> {
+  await page.waitFor('.virtualpage');
+  const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
+    return elements.map(element => element.innerHTML);
+  });
+  await parseContentChunks(contentChunks);
 }
 
 interface Course {
