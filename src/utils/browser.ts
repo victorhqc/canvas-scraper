@@ -4,14 +4,14 @@
 //   TElementHandle as ElementHandle,
 // } from 'foxr';
 import puppeteer, { Browser, Page, ElementHandle } from 'puppeteer';
-import uuidv4 from 'uuid/v4';
+// import uuidv4 from 'uuid/v4';
 import getConfig from './config';
 
 export function launchBrowser(): Promise<Browser> {
-  const profile = `/tmp/canvas_unir_${uuidv4()}`;
+  // const profile = `/tmp/canvas_unir_${uuidv4()}`;
   return puppeteer.launch({
     headless: getConfig().headless,
-    args: ['-marionette', '-safe-mode', '-no-remote', '-profile', profile],
+    // args: ['-marionette', '-safe-mode', '-no-remote', '-profile', profile],
     // executablePath: getConfig().firefoxPath,
   });
 }

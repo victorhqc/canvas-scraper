@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 import { buildGetElementHandle, navigateInNewPage } from './browser';
 import logger from './logger';
 
-export async function parseContentFromCouse(
+export async function getContentFromCouse(
   browser: Browser,
   page: Page
 ): Promise<ContentChunksByTopic> {
@@ -106,24 +106,34 @@ async function extractTopicContent(page: Page): Promise<ContentChunk[]> {
     return elements.map(element => element.innerHTML);
   });
 
-  const chunks = await parseContentChunks(contentChunks);
-  return chunks;
+  return parseContentChunks(contentChunks);
 }
 
 export interface ContentChunksByTopic {
   [key: string]: ContentChunk[];
 }
 
-export async function parseContentChunks(chunks: ContentChunk[]): Promise<ContentChunk[]> {
+async function parseContentChunks(chunks: ContentChunk[]): Promise<ContentChunk[]> {
   try {
     const dom = new JSDOM();
     const converter = new showdown.Converter();
-    const markdownChunks = chunks.map(chunk => converter.makeMarkdown(chunk, dom.window.document));
+    const markdownChunksPromises = chunks.map(async chunk => {
+      const images = await downloadPictures(chunk);
+      if (images.length > 0) {
+        console.log('IMAGES', images);
+      }
+      return converter.makeMarkdown(chunk, dom.window.document);
+    });
 
-    return markdownChunks;
+    return Promise.all(markdownChunksPromises);
   } catch (e) {
     throw new FailedParseContent(e);
   }
+}
+
+async function downloadPictures(chunk: ContentChunk): Promise<ImagePath[]> {
+  const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
+  return images;
 }
 
 export class FailedParseContent extends Error {
@@ -131,3 +141,4 @@ export class FailedParseContent extends Error {
 }
 
 export type ContentChunk = string;
+export type ImagePath = string;
