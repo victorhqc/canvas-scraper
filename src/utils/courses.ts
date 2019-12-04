@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import wait from './wait';
 import * as inquirer from 'inquirer';
 import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
-import { parseContentChunks } from './content';
+import { parseContentChunks, ContentChunk } from './content';
 import logger from './logger';
 
 export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise<Course[]> {
@@ -73,12 +73,19 @@ export async function loadTopicsIframeFromCoursePage(browser: Browser, page: Pag
   return navigateInNewPage(browser, uri);
 }
 
-export async function parseTopics(browser: Browser, page: Page): Promise<void> {
+export async function parseTopics(browser: Browser, page: Page): Promise<ContentChunksByTopic> {
   const tabs = await getTopicTabs(page);
+  let result: ContentChunksByTopic = {};
   for (const [tabIndex] of tabs.entries()) {
     logger.debug(`Parsing topic tab: (${tabIndex + 1})`);
-    await navigateToCourseByIndex(browser, page.url(), tabIndex);
+    const chunks = await navigateToCourseByIndex(browser, page.url(), tabIndex);
+    result = {
+      ...result,
+      ...chunks,
+    };
   }
+
+  return result;
 }
 
 async function getTopicTabs(page: Page): Promise<JSHandle[]> {
@@ -94,7 +101,7 @@ async function navigateToCourseByIndex(
   browser: Browser,
   pageUrl: string,
   activeTabIndex: number
-): Promise<void> {
+): Promise<ContentChunksByTopic> {
   const page = await navigateInNewPage(browser, pageUrl);
 
   await clickTopicByIndex(page, activeTabIndex);
@@ -102,10 +109,18 @@ async function navigateToCourseByIndex(
 
   const topics = await getTopics(page);
 
+  const courseChunks: ContentChunksByTopic = {};
   for (const [index] of topics.entries()) {
     logger.debug(`Parsing topic: (${index + 1})`);
-    await navigateToTopicByIndex(browser, pageUrl, activeTabIndex, index);
+    courseChunks[`topic_${activeTabIndex}_${index}`] = await navigateToTopicByIndex(
+      browser,
+      pageUrl,
+      activeTabIndex,
+      index
+    );
   }
+
+  return courseChunks;
 }
 
 async function getTopics(page: Page): Promise<JSHandle[]> {
@@ -138,7 +153,7 @@ async function navigateToTopicByIndex(
   pageUrl: string,
   activeTabIndex: number,
   activeTopicIndex: number
-): Promise<void> {
+): Promise<ContentChunk[]> {
   const page = await navigateInNewPage(browser, pageUrl);
   await parseTopicTitles(page, activeTabIndex);
 
@@ -146,15 +161,22 @@ async function navigateToTopicByIndex(
     page.click(`[data-topic-index="${activeTopicIndex}"]`),
     page.waitForNavigation(),
   ]);
-  await parseTopicContent(page);
+
+  return parseTopicContent(page);
 }
 
-async function parseTopicContent(page: Page): Promise<void> {
+async function parseTopicContent(page: Page): Promise<ContentChunk[]> {
   await page.waitFor('.virtualpage');
   const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
     return elements.map(element => element.innerHTML);
   });
-  await parseContentChunks(contentChunks);
+
+  const chunks = await parseContentChunks(contentChunks);
+  return chunks;
+}
+
+export interface ContentChunksByTopic {
+  [key: string]: ContentChunk[];
 }
 
 interface Course {

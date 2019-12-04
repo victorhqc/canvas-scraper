@@ -1,15 +1,14 @@
 import showdown from 'showdown';
 import { JSDOM } from 'jsdom';
 
-export async function parseContentChunks(chunks: string[]): Promise<void> {
+export async function parseContentChunks(chunks: ContentChunk[]): Promise<ContentChunk[]> {
   try {
     const dom = new JSDOM();
-    console.log('DOCUMENT', dom.window.document);
     const converter = new showdown.Converter();
     const markdownChunks = chunks.map(chunk => converter.makeMarkdown(chunk, dom.window.document));
-    console.log(markdownChunks);
+
+    return markdownChunks;
   } catch (e) {
-    console.log(e);
     throw new FailedParseContent(e);
   }
 }
@@ -17,3 +16,5 @@ export async function parseContentChunks(chunks: string[]): Promise<void> {
 export class FailedParseContent extends Error {
   contextMessage = 'Parsing content failed';
 }
+
+export type ContentChunk = string;

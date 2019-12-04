@@ -31,7 +31,8 @@ async function parse(command: Command): Promise<void> {
 
   const iframePage = await loadTopicsIframeFromCoursePage(browser, page);
   logger.info('Navigated to course topics (iframe)');
-  await parseTopics(browser, iframePage);
+  const courseChunks = await parseTopics(browser, iframePage);
+  console.log(courseChunks);
 
   logger.info('Parsing succeeded');
   process.exit(0);
@@ -40,7 +41,8 @@ async function parse(command: Command): Promise<void> {
 export function parseOptions(command: Command): Command {
   return command
     .option('-u, --username <username>', 'Canvas username, example: ABCD012345')
-    .option('-p, --password <password>', 'Password');
+    .option('-p, --password <password>', 'Password')
+    .option('t, --target <target>', 'Target path, i.e. "~/Desktop/"');
 }
 
 export function parseCommand(command: Command): Command {
