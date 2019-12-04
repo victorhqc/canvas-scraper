@@ -1,15 +1,15 @@
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
+import { handleCommand } from '../utils/command-handler';
 import { ProvidedAuthInfo, freshLogin } from '../utils/authentication';
 import {
   getAvailableCourses,
   chooseCourse,
   navigateToCourse,
   loadTopicsIframeFromCoursePage,
-  parseTopics,
 } from '../utils/courses';
-import { handleCommand } from '../utils/command-handler';
+import { parseContentFromCouse } from '../utils/content';
 import logger from '../utils/logger';
 
 dotenv.config({});
@@ -31,7 +31,7 @@ async function parse(command: Command): Promise<void> {
 
   const iframePage = await loadTopicsIframeFromCoursePage(browser, page);
   logger.info('Navigated to course topics (iframe)');
-  const courseChunks = await parseTopics(browser, iframePage);
+  const courseChunks = await parseContentFromCouse(browser, iframePage);
   console.log(courseChunks);
 
   logger.info('Parsing succeeded');
