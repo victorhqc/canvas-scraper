@@ -1,9 +1,16 @@
 // import { TPage as Page } from 'foxr';
+import stream from 'stream';
+import { promisify } from 'util';
+import fs from 'fs';
+import url from 'url';
+import { Readable } from 'stream';
 import { Browser, Page, JSHandle } from 'puppeteer';
 import showdown from 'showdown';
 import { JSDOM } from 'jsdom';
 import { buildGetElementHandle, navigateInNewPage } from './browser';
 import logger from './logger';
+
+const pipeline = promisify(stream.pipeline);
 
 export async function getContentFromCouse(
   browser: Browser,
@@ -97,28 +104,32 @@ async function getContentFromTopic(
     page.waitForNavigation(),
   ]);
 
-  return extractTopicContent(page);
+  return extractTopicContent(browser, page);
 }
 
-async function extractTopicContent(page: Page): Promise<ContentChunk[]> {
+async function extractTopicContent(browser: Browser, page: Page): Promise<ContentChunk[]> {
   await page.waitFor('.virtualpage');
   const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
     return elements.map(element => element.innerHTML);
   });
 
-  return parseContentChunks(contentChunks);
+  return parseContentChunks(contentChunks, browser, page);
 }
 
 export interface ContentChunksByTopic {
   [key: string]: ContentChunk[];
 }
 
-async function parseContentChunks(chunks: ContentChunk[]): Promise<ContentChunk[]> {
+async function parseContentChunks(
+  chunks: ContentChunk[],
+  browser: Browser,
+  page: Page
+): Promise<ContentChunk[]> {
   try {
     const dom = new JSDOM();
     const converter = new showdown.Converter();
     const markdownChunksPromises = chunks.map(async chunk => {
-      const images = await downloadPictures(chunk);
+      const images = await downloadPictures(chunk, browser, page);
       if (images.length > 0) {
         console.log('IMAGES', images);
       }
@@ -131,13 +142,58 @@ async function parseContentChunks(chunks: ContentChunk[]): Promise<ContentChunk[
   }
 }
 
-async function downloadPictures(chunk: ContentChunk): Promise<ImagePath[]> {
+async function downloadPictures(
+  chunk: ContentChunk,
+  browser: Browser,
+  page: Page
+): Promise<ImagePath[]> {
   const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
+
+  for (const [index, imgPath] of images.entries()) {
+    const imgUrl = forgeImageUrl(imgPath, page.url());
+    const imagePage = await navigateInNewPage(browser, imgUrl);
+    console.log('GO TO', imgUrl);
+    const source = await imagePage.goto(imgUrl);
+    if (!source) {
+      throw new ImageNotFound(imgUrl);
+    }
+
+    const readable = new Readable();
+    // _read is required but you can noop it
+    readable._read = () => {};
+    readable.push(await source.buffer());
+    readable.push(null);
+
+    console.log('IMG URL', imgUrl);
+    await pipeline(readable, fs.createWriteStream(`pictures/${index}_${Math.random()}.png`));
+  }
+
   return images;
+}
+
+function forgeImageUrl(imgPath: string, pageUrl: string): string {
+  const parsedUrl = url.parse(pageUrl);
+
+  // Usually, the url will loke like:
+  // https://unir.com/whatever/page/foo.html?something=1
+  // we use the parse() function to get the pathname:
+  // `/whatever/page/foo.html`
+  // And then remove the `foo.html`
+  const cleanedPathname = parsedUrl.pathname?.replace(/([a-z0-9-_.]+\.html?)/gi, '');
+
+  if (!cleanedPathname) {
+    throw new Error("Can't forge img url");
+  }
+
+  return `${parsedUrl.protocol}//${parsedUrl.host}${cleanedPathname}${imgPath}`;
 }
 
 export class FailedParseContent extends Error {
   contextMessage = 'Parsing content failed';
+}
+
+export class ImageNotFound extends Error {
+  contextMessage = "Couldn't find image";
 }
 
 export type ContentChunk = string;
