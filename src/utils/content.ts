@@ -11,63 +11,152 @@ import { buildGetElementHandle, navigateInNewPage } from './browser';
 import logger from './logger';
 
 const pipeline = promisify(stream.pipeline);
+const exists = promisify(fs.exists);
+const mkdir = promisify(fs.mkdir);
 
-export async function getContentFromCouse(
-  browser: Browser,
-  page: Page
-): Promise<ContentChunksByTopic> {
-  const tabs = await getTopicTabs(page);
-  let result: ContentChunksByTopic = {};
-  for (const [tabIndex] of tabs.entries()) {
-    logger.debug(`Parsing topic tab: (${tabIndex + 1})`);
-    const chunks = await getContentFromTopicsTab(browser, page.url(), tabIndex);
-    result = {
-      ...result,
-      ...chunks,
-    };
+export default class ContentParser {
+  private browser: Browser;
+  private coursePage: Page;
+
+  private topicsIterationLength: number;
+
+  constructor(browser: Browser, page: Page) {
+    this.browser = browser;
+    this.coursePage = page;
+
+    this.topicsIterationLength = 0;
   }
 
-  return result;
-}
+  async getContentFromCourse(): Promise<ContentChunksByTopic> {
+    if (!(await exists('content/'))) {
+      await mkdir('content/');
+    }
 
-async function getTopicTabs(page: Page): Promise<JSHandle[]> {
-  const tabs = await page.$$('#maintab li');
-  return tabs;
-}
+    const tabs = await getTopicTabs(this.coursePage);
+    let result: ContentChunksByTopic = {};
+    for (const [tabIndex] of tabs.entries()) {
+      logger.debug(`Parsing topic tab: (${tabIndex + 1})`);
+      const chunks = await this.getContentFromTopicsTab(tabIndex);
+      result = {
+        ...result,
+        ...chunks,
+      };
+    }
 
-/**
- * Navigates to a new page. This will allow us to avoid any pollution to the original page and
- * habe a blank canvas in each iteration.
- */
-async function getContentFromTopicsTab(
-  browser: Browser,
-  pageUrl: string,
-  activeTabIndex: number
-): Promise<ContentChunksByTopic> {
-  const page = await navigateInNewPage(browser, pageUrl);
-
-  await clickTopicByIndex(page, activeTabIndex);
-  await parseTopicTitles(page, activeTabIndex);
-
-  const topics = await getTopics(page);
-
-  const courseChunks: ContentChunksByTopic = {};
-  for (const [index] of topics.entries()) {
-    logger.debug(`Parsing topic: (${index + 1})`);
-    courseChunks[`topic_${activeTabIndex}_${index}`] = await getContentFromTopic(
-      browser,
-      pageUrl,
-      activeTabIndex,
-      index
-    );
+    return result;
   }
 
-  return courseChunks;
+  /**
+   * Navigates to a new page. This will allow us to avoid any pollution to the original page and
+   * habe a blank canvas in each iteration.
+   */
+  async getContentFromTopicsTab(activeTabIndex: number): Promise<ContentChunksByTopic> {
+    const page = await navigateInNewPage(this.browser, this.coursePage.url());
+
+    await clickTopicByIndex(page, activeTabIndex);
+    await parseTopicTitles(page, activeTabIndex);
+
+    const topics = await getTopics(page);
+
+    const courseChunks: ContentChunksByTopic = {};
+    for (const [index] of topics.entries()) {
+      logger.debug(`Parsing topic: (${index + 1})`);
+      courseChunks[`topic_${activeTabIndex}_${index}`] = await this.getContentFromTopic(
+        activeTabIndex,
+        index,
+        this.topicsIterationLength
+      );
+    }
+
+    this.topicsIterationLength = topics.length;
+    return courseChunks;
+  }
+
+  /**
+   * Navigating to each topic will involve opening a fresh page as well.
+   */
+  async getContentFromTopic(
+    activeTabIndex: number,
+    activeTopicIndex: number,
+    topicsLength: number
+  ): Promise<ContentChunk[]> {
+    const page = await navigateInNewPage(this.browser, this.coursePage.url());
+    await parseTopicTitles(page, activeTabIndex);
+
+    await Promise.all([
+      page.click(`[data-topic-index="${activeTopicIndex}"]`),
+      page.waitForNavigation(),
+    ]);
+
+    const topicNumber = activeTabIndex * topicsLength + (activeTopicIndex + 1);
+    if (!(await exists(`content/topic_${topicNumber}`))) {
+      await mkdir(`content/topic_${topicNumber}`);
+      await mkdir(`content/topic_${topicNumber}/pictures`);
+    }
+
+    const result = this.extractTopicContent(page, topicNumber);
+
+    return result;
+  }
+
+  async extractTopicContent(page: Page, topicNumber: number): Promise<ContentChunk[]> {
+    await page.waitFor('.virtualpage');
+    const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
+      return elements.map(element => element.innerHTML);
+    });
+
+    return this.parseContentChunks(contentChunks, page.url(), topicNumber);
+  }
+
+  async parseContentChunks(
+    chunks: ContentChunk[],
+    pageUrl: string,
+    topicNumber: number
+  ): Promise<ContentChunk[]> {
+    try {
+      const dom = new JSDOM();
+      const converter = new showdown.Converter();
+
+      const markdownChunksPromises = chunks.map(async chunk => {
+        const picturePaths = await this.downloadPictures(chunk, pageUrl, topicNumber);
+        const chunkWithPictures = replacePictures(chunk, picturePaths);
+        return converter.makeMarkdown(chunkWithPictures, dom.window.document);
+      });
+
+      return Promise.all(markdownChunksPromises);
+    } catch (e) {
+      throw new FailedParseContent(e);
+    }
+  }
+
+  async downloadPictures(
+    chunk: ContentChunk,
+    pageUrl: string,
+    topicNumber: number
+  ): Promise<PicturePath[]> {
+    const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
+
+    const picturePromises = images.map(async picturePath => {
+      const picUrl = forgePictureUrl(picturePath, pageUrl);
+      const picPath = forgePictureTargetPath(picturePath, topicNumber);
+
+      await downloadPicture(this.browser, picUrl, picPath);
+
+      return picPath;
+    });
+
+    return Promise.all(picturePromises);
+  }
 }
 
 async function getTopics(page: Page): Promise<JSHandle[]> {
   const topics = await page.$$('[data-topic-index]');
   return topics;
+}
+
+async function getTopicTabs(page: Page): Promise<JSHandle[]> {
+  const tabs = await page.$$('#maintab li');
+  return tabs;
 }
 
 async function clickTopicByIndex(page: Page, activeTabIndex: number): Promise<void> {
@@ -87,91 +176,15 @@ async function parseTopicTitles(page: Page, activeTabIndex: number): Promise<voi
   );
 }
 
-/**
- * Navigating to each topic will involve opening a fresh page as well.
- */
-async function getContentFromTopic(
-  browser: Browser,
-  pageUrl: string,
-  activeTabIndex: number,
-  activeTopicIndex: number
-): Promise<ContentChunk[]> {
-  const page = await navigateInNewPage(browser, pageUrl);
-  await parseTopicTitles(page, activeTabIndex);
-
-  await Promise.all([
-    page.click(`[data-topic-index="${activeTopicIndex}"]`),
-    page.waitForNavigation(),
-  ]);
-
-  return extractTopicContent(browser, page);
-}
-
-async function extractTopicContent(browser: Browser, page: Page): Promise<ContentChunk[]> {
-  await page.waitFor('.virtualpage');
-  const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
-    return elements.map(element => element.innerHTML);
-  });
-
-  return parseContentChunks(contentChunks, browser, page);
-}
-
 export interface ContentChunksByTopic {
   [key: string]: ContentChunk[];
 }
 
-async function parseContentChunks(
-  chunks: ContentChunk[],
-  browser: Browser,
-  page: Page
-): Promise<ContentChunk[]> {
-  try {
-    const dom = new JSDOM();
-    const converter = new showdown.Converter();
-    const markdownChunksPromises = chunks.map(async chunk => {
-      const images = await downloadPictures(chunk, browser, page);
-      if (images.length > 0) {
-        console.log('IMAGES', images);
-      }
-      return converter.makeMarkdown(chunk, dom.window.document);
-    });
-
-    return Promise.all(markdownChunksPromises);
-  } catch (e) {
-    throw new FailedParseContent(e);
-  }
+function replacePictures(chunk: ContentChunk, picturePaths: PicturePath[]): ContentChunk {
+  return chunk;
 }
 
-async function downloadPictures(
-  chunk: ContentChunk,
-  browser: Browser,
-  page: Page
-): Promise<ImagePath[]> {
-  const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
-
-  for (const [index, imgPath] of images.entries()) {
-    const imgUrl = forgeImageUrl(imgPath, page.url());
-    const imagePage = await navigateInNewPage(browser, imgUrl);
-    console.log('GO TO', imgUrl);
-    const source = await imagePage.goto(imgUrl);
-    if (!source) {
-      throw new ImageNotFound(imgUrl);
-    }
-
-    const readable = new Readable();
-    // _read is required but you can noop it
-    readable._read = () => {};
-    readable.push(await source.buffer());
-    readable.push(null);
-
-    console.log('IMG URL', imgUrl);
-    await pipeline(readable, fs.createWriteStream(`pictures/${index}_${Math.random()}.png`));
-  }
-
-  return images;
-}
-
-function forgeImageUrl(imgPath: string, pageUrl: string): string {
+function forgePictureUrl(picturePath: PicturePath, pageUrl: string): string {
   const parsedUrl = url.parse(pageUrl);
 
   // Usually, the url will loke like:
@@ -185,16 +198,46 @@ function forgeImageUrl(imgPath: string, pageUrl: string): string {
     throw new Error("Can't forge img url");
   }
 
-  return `${parsedUrl.protocol}//${parsedUrl.host}${cleanedPathname}${imgPath}`;
+  return `${parsedUrl.protocol}//${parsedUrl.host}${cleanedPathname}${picturePath}`;
+}
+
+function forgePictureTargetPath(picturePath: PicturePath, topicNumber: number): PicturePath {
+  const pictureName = picturePath.match(/([^/]+\.[a-z]{3,4})/gi);
+  if (!pictureName) {
+    throw new PictureBadName(picturePath);
+  }
+
+  return `content/topic_${topicNumber}/pictures/${pictureName}`;
+}
+
+async function downloadPicture(browser: Browser, picUrl: string, picPath: string): Promise<void> {
+  // We need to go to a new tab our it throws a navigation error.
+  const imagePage = await navigateInNewPage(browser, picUrl);
+  const source = await imagePage.goto(picUrl);
+  if (!source) {
+    throw new PictureNotFound(picUrl);
+  }
+
+  const readable = new Readable();
+  // _read is required but you can noop it
+  readable._read = () => {};
+  readable.push(await source.buffer());
+  readable.push(null);
+
+  await pipeline(readable, fs.createWriteStream(picPath));
 }
 
 export class FailedParseContent extends Error {
   contextMessage = 'Parsing content failed';
 }
 
-export class ImageNotFound extends Error {
-  contextMessage = "Couldn't find image";
+export class PictureNotFound extends Error {
+  contextMessage = "Couldn't find picture";
+}
+
+export class PictureBadName extends Error {
+  contextMessage = 'Picture has incorrect name or path';
 }
 
 export type ContentChunk = string;
-export type ImagePath = string;
+export type PicturePath = string;
