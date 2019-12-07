@@ -89,9 +89,9 @@ export default class ContentParser {
     ]);
 
     const topicNumber = activeTabIndex * topicsLength + (activeTopicIndex + 1);
-    if (!(await exists(`content/topic_${topicNumber}`))) {
-      await mkdir(`content/topic_${topicNumber}`);
-      await mkdir(`content/topic_${topicNumber}/pictures`);
+    if (!(await exists(topicPath(topicNumber)))) {
+      await mkdir(topicPath(topicNumber));
+      await mkdir(`${topicPath(topicNumber)}/pictures`);
     }
 
     const result = this.extractTopicContent(page, topicNumber);
@@ -118,9 +118,10 @@ export default class ContentParser {
       const converter = new showdown.Converter();
 
       const markdownChunksPromises = chunks.map(async chunk => {
-        const picturePaths = await this.downloadPictures(chunk, pageUrl, topicNumber);
-        const chunkWithPictures = replacePictures(chunk, picturePaths);
-        return converter.makeMarkdown(chunkWithPictures, dom.window.document);
+        const pictures = await this.downloadPictures(chunk, pageUrl, topicNumber);
+        const markdownChunk = converter.makeMarkdown(chunk, dom.window.document);
+        const chunkWithPictures = replacePictures(markdownChunk, pictures);
+        return chunkWithPictures;
       });
 
       return Promise.all(markdownChunksPromises);
@@ -133,16 +134,19 @@ export default class ContentParser {
     chunk: ContentChunk,
     pageUrl: string,
     topicNumber: number
-  ): Promise<PicturePath[]> {
+  ): Promise<Picture[]> {
     const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
 
-    const picturePromises = images.map(async picturePath => {
+    const picturePromises: Promise<Picture>[] = images.map(async picturePath => {
       const picUrl = forgePictureUrl(picturePath, pageUrl);
       const picPath = forgePictureTargetPath(picturePath, topicNumber);
 
       await downloadPicture(this.browser, picUrl, picPath);
 
-      return picPath;
+      return {
+        path: picPath,
+        name: getPictureName(picPath),
+      };
     });
 
     return Promise.all(picturePromises);
@@ -180,8 +184,11 @@ export interface ContentChunksByTopic {
   [key: string]: ContentChunk[];
 }
 
-function replacePictures(chunk: ContentChunk, picturePaths: PicturePath[]): ContentChunk {
-  return chunk;
+function replacePictures(chunk: ContentChunk, pictures: Picture[]): ContentChunk {
+  return pictures.reduce((acc, picture) => {
+    const markdownPicture = `![${picture.name}](./pictures/${picture.name})`;
+    return acc.replace(/!\[.*\]\(.*\)/gi, markdownPicture);
+  }, chunk);
 }
 
 function forgePictureUrl(picturePath: PicturePath, pageUrl: string): string {
@@ -202,12 +209,8 @@ function forgePictureUrl(picturePath: PicturePath, pageUrl: string): string {
 }
 
 function forgePictureTargetPath(picturePath: PicturePath, topicNumber: number): PicturePath {
-  const pictureName = picturePath.match(/([^/]+\.[a-z]{3,4})/gi);
-  if (!pictureName) {
-    throw new PictureBadName(picturePath);
-  }
-
-  return `content/topic_${topicNumber}/pictures/${pictureName}`;
+  const pictureName = getPictureName(picturePath);
+  return `${topicPath(topicNumber)}/pictures/${pictureName}`;
 }
 
 async function downloadPicture(browser: Browser, picUrl: string, picPath: string): Promise<void> {
@@ -227,6 +230,20 @@ async function downloadPicture(browser: Browser, picUrl: string, picPath: string
   await pipeline(readable, fs.createWriteStream(picPath));
 }
 
+function getPictureName(picturePath: PicturePath): string {
+  const pictureName = picturePath.match(/([^/]+\.[a-z]{3,4})/gi);
+
+  if (!pictureName) {
+    throw new PictureBadName(picturePath);
+  }
+
+  return pictureName[0];
+}
+
+function topicPath(topicNumber: number): string {
+  return `content/topic_${topicNumber}`;
+}
+
 export class FailedParseContent extends Error {
   contextMessage = 'Parsing content failed';
 }
@@ -241,3 +258,7 @@ export class PictureBadName extends Error {
 
 export type ContentChunk = string;
 export type PicturePath = string;
+export interface Picture {
+  path: PicturePath;
+  name: string;
+}

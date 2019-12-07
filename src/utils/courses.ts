@@ -22,7 +22,7 @@ export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise
       throw new NoCoursesError();
     }
 
-    await wait(100);
+    await wait(1000);
     logger.warn(`Couldn't find courses, will try again (${retriedTimes + 1})`);
     return getAvailableCourses(page, retriedTimes + 1);
   }
