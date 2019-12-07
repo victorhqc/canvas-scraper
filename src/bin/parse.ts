@@ -34,9 +34,9 @@ async function parse(command: Command): Promise<void> {
 
   const contentParser = new ContentParser(browser, iframePage);
 
-  const courseChunks = await contentParser.getContentFromCourse();
+  const courseContent = await contentParser.getContentFromCourse();
   logger.info('Successfully found Course content');
-  console.log(courseChunks);
+  console.log(courseContent);
 
   logger.info('Parsing succeeded');
   process.exit(0);

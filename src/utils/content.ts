@@ -79,7 +79,7 @@ export default class ContentParser {
     activeTabIndex: number,
     activeTopicIndex: number,
     topicsLength: number
-  ): Promise<ContentChunk[]> {
+  ): Promise<CourseContent> {
     const page = await navigateInNewPage(this.browser, this.coursePage.url());
     await parseTopicTitles(page, activeTabIndex);
 
@@ -94,12 +94,10 @@ export default class ContentParser {
       await mkdir(`${topicPath(topicNumber)}/pictures`);
     }
 
-    const result = this.extractTopicContent(page, topicNumber);
-
-    return result;
+    return this.extractTopicContent(page, topicNumber);
   }
 
-  async extractTopicContent(page: Page, topicNumber: number): Promise<ContentChunk[]> {
+  async extractTopicContent(page: Page, topicNumber: number): Promise<CourseContent> {
     await page.waitFor('.virtualpage');
     const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
       return elements.map(element => element.innerHTML);
@@ -112,7 +110,7 @@ export default class ContentParser {
     chunks: ContentChunk[],
     pageUrl: string,
     topicNumber: number
-  ): Promise<ContentChunk[]> {
+  ): Promise<CourseContent> {
     try {
       const dom = new JSDOM();
       const converter = new showdown.Converter();
@@ -124,7 +122,12 @@ export default class ContentParser {
         return chunkWithPictures;
       });
 
-      return Promise.all(markdownChunksPromises);
+      const parsedChunks = await Promise.all(markdownChunksPromises);
+      const filePath = await saveMarkdownFile(parsedChunks, topicNumber);
+
+      return {
+        path: filePath,
+      };
     } catch (e) {
       throw new FailedParseContent(e);
     }
@@ -178,10 +181,6 @@ async function parseTopicTitles(page: Page, activeTabIndex: number): Promise<voi
       });
     }
   );
-}
-
-export interface ContentChunksByTopic {
-  [key: string]: ContentChunk[];
 }
 
 function replacePictures(chunk: ContentChunk, pictures: Picture[]): ContentChunk {
@@ -240,6 +239,24 @@ function getPictureName(picturePath: PicturePath): string {
   return pictureName[0];
 }
 
+function saveMarkdownFile(chunks: ContentChunk[], topicNumber: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const filePath = `${topicPath(topicNumber)}/README.md`;
+    const file = fs.createWriteStream(filePath);
+
+    file.on('error', e => {
+      reject(new SaveMarkdownError(e));
+    });
+
+    chunks.forEach(chunk => {
+      file.write(chunk);
+    });
+    file.end();
+
+    resolve(filePath);
+  });
+}
+
 function topicPath(topicNumber: number): string {
   return `content/topic_${topicNumber}`;
 }
@@ -256,9 +273,21 @@ export class PictureBadName extends Error {
   contextMessage = 'Picture has incorrect name or path';
 }
 
+export class SaveMarkdownError extends Error {
+  contextMessage = "Couldn't save Markdown file";
+}
+
 export type ContentChunk = string;
 export type PicturePath = string;
 export interface Picture {
   path: PicturePath;
   name: string;
+}
+
+export interface ContentChunksByTopic {
+  [key: string]: CourseContent;
+}
+
+export interface CourseContent {
+  path: string;
 }
