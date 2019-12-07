@@ -9,7 +9,7 @@ import {
   navigateToCourse,
   loadTopicsIframeFromCoursePage,
 } from '../utils/courses';
-import ContentParser from '../utils/content';
+import CourseParser from '../parsers/CourseParser';
 import logger from '../utils/logger';
 
 dotenv.config({});
@@ -32,7 +32,7 @@ async function parse(command: Command): Promise<void> {
   const iframePage = await loadTopicsIframeFromCoursePage(browser, page);
   logger.info('Navigated to course topics (iframe)');
 
-  const contentParser = new ContentParser(browser, iframePage);
+  const contentParser = new CourseParser(browser, iframePage);
 
   const courseContent = await contentParser.getContentFromCourse();
   logger.info('Successfully found Course content');
