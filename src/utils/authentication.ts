@@ -1,41 +1,19 @@
 import { AuthenticationFailedError } from '../types/authentication';
-import * as inquirer from 'inquirer';
 // import { TPage as Page } from 'foxr';
 import { Page } from 'puppeteer';
+import { gatherInfo, ProvidedInfo } from './command-handler';
 import { buildGetElementHandle } from './browser';
 
 const questions = [
   { name: 'username', message: 'What is your canvas username?' },
   { name: 'password', message: 'What is your canvas password?', type: 'password' },
-] as const;
+];
 
-type RequiredParameter = typeof questions[number]['name'];
-
-export type ProvidedAuthInfo = {
-  [key in RequiredParameter]?: string;
-};
-
-type Answers = {
-  [key in RequiredParameter]: string;
-};
-
-export async function gatherLoginInput(providedInfo?: ProvidedAuthInfo): Promise<Answers> {
-  const getOption = (parameter: RequiredParameter): string | undefined =>
-    providedInfo && providedInfo[parameter];
-
-  const missingQuestions = questions.filter(({ name }) => !getOption(name));
-  const answers = await inquirer.prompt<Answers>(missingQuestions);
-
-  const entries = questions.map(({ name: parameter }) => {
-    const value = getOption(parameter) || answers[parameter];
-    return [parameter, value] as const;
-  });
-
-  return Object.fromEntries(entries) as Answers;
-}
-
-export async function freshLogin(page: Page, providedInfo: ProvidedAuthInfo): Promise<void> {
-  const { username, password } = await gatherLoginInput(providedInfo);
+export async function freshLogin(
+  page: Page,
+  providedInfo: ProvidedInfo<typeof questions>
+): Promise<void> {
+  const { username, password } = await gatherInfo<typeof questions>(questions, providedInfo);
   await auth(page, username, password);
 }
 

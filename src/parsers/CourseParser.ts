@@ -28,19 +28,21 @@ const mkdir = promisify(fs.mkdir);
 export default class CourseParser {
   private browser: Browser;
   private coursePage: Page;
+  private target: string;
 
   private topicsIterationLength: number;
 
-  constructor(browser: Browser, page: Page) {
+  constructor(browser: Browser, page: Page, target: string) {
     this.browser = browser;
     this.coursePage = page;
+    this.target = target;
 
     this.topicsIterationLength = 0;
   }
 
   async getContentFromCourse(): Promise<ContentChunksByTopic> {
-    if (!(await exists('content/'))) {
-      await mkdir('content/');
+    if (!(await exists(`${this.target}/`))) {
+      await mkdir(`${this.target}/`);
     }
 
     const tabs = await getTopicTabs(this.coursePage);
@@ -101,9 +103,9 @@ export default class CourseParser {
       page.waitForNavigation(),
     ]);
 
-    if (!(await exists(topicPath(topicNumber)))) {
-      await mkdir(topicPath(topicNumber));
-      await mkdir(`${topicPath(topicNumber)}/images`);
+    if (!(await exists(topicPath(this.target, topicNumber)))) {
+      await mkdir(topicPath(this.target, topicNumber));
+      await mkdir(`${topicPath(this.target, topicNumber)}/images`);
     }
 
     return this.extractTopicContent(page, topicNumber);
@@ -139,7 +141,7 @@ export default class CourseParser {
       });
 
       const parsedChunks = await Promise.all(markdownChunksPromises);
-      const filePath = await saveMarkdownFile(parsedChunks, topicNumber);
+      const filePath = await saveMarkdownFile(parsedChunks, this.target, topicNumber);
       logger.debug('Saved markdown File');
 
       return {
@@ -159,7 +161,7 @@ export default class CourseParser {
 
     const imagePromises: Promise<Image>[] = images.map(async imagePath => {
       const picUrl = forgeImageUrl(imagePath, pageUrl);
-      const picPath = forgeImageTargetPath(imagePath, topicNumber);
+      const picPath = forgeImageTargetPath(imagePath, this.target, topicNumber);
 
       await downloadImage(this.browser, picUrl, picPath);
 

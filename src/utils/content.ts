@@ -5,9 +5,18 @@ import fs from 'fs';
 import url from 'url';
 import { Readable } from 'stream';
 import { Browser, Page, JSHandle } from 'puppeteer';
+import { gatherInfo, ProvidedInfo } from './command-handler';
 import { buildGetElementHandle, navigateInNewPage } from './browser';
 
 const pipeline = promisify(stream.pipeline);
+
+const questions = [{ name: 'target', message: "Where do you want to save the course's content?" }];
+
+export async function getTarget(providedInfo: ProvidedInfo<typeof questions>): Promise<string> {
+  const { target } = await gatherInfo<typeof questions>(questions, providedInfo);
+
+  return target;
+}
 
 export async function getTopics(page: Page): Promise<JSHandle[]> {
   const topics = await page.$$('[data-topic-index]');
@@ -60,9 +69,13 @@ export function forgeImageUrl(imagePath: ImagePath, pageUrl: string): string {
   return `${parsedUrl.protocol}//${parsedUrl.host}${cleanedPathname}${imagePath}`;
 }
 
-export function forgeImageTargetPath(imagePath: ImagePath, topicNumber: number): ImagePath {
+export function forgeImageTargetPath(
+  imagePath: ImagePath,
+  target: string,
+  topicNumber: number
+): ImagePath {
   const imageName = getImageName(imagePath);
-  return `${topicPath(topicNumber)}/images/${imageName}`;
+  return `${topicPath(target, topicNumber)}/images/${imageName}`;
 }
 
 export async function downloadImage(
@@ -96,9 +109,13 @@ export function getImageName(imagePath: ImagePath): string {
   return imageName[0];
 }
 
-export function saveMarkdownFile(chunks: ContentChunk[], topicNumber: number): Promise<string> {
+export function saveMarkdownFile(
+  chunks: ContentChunk[],
+  target: string,
+  topicNumber: number
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    const filePath = `${topicPath(topicNumber)}/README.md`;
+    const filePath = `${topicPath(target, topicNumber)}/README.md`;
     const file = fs.createWriteStream(filePath);
 
     file.on('error', e => {
@@ -114,8 +131,8 @@ export function saveMarkdownFile(chunks: ContentChunk[], topicNumber: number): P
   });
 }
 
-export function topicPath(topicNumber: number): string {
-  return `content/topic_${topicNumber}`;
+export function topicPath(target: string, topicNumber: number): string {
+  return `${target}/topic_${topicNumber}`;
 }
 
 export class ImageNotFound extends Error {

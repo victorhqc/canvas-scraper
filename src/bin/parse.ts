@@ -1,13 +1,14 @@
 import { Command } from 'commander';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
 import { handleCommand } from '../utils/command-handler';
-import { ProvidedAuthInfo, freshLogin } from '../utils/authentication';
+import { freshLogin } from '../utils/authentication';
 import {
   getAvailableCourses,
   chooseCourse,
   navigateToCourse,
   loadTopicsIframeFromCoursePage,
 } from '../utils/courses';
+import { getTarget } from '../utils/content';
 import CourseParser from '../parsers/CourseParser';
 import logger from '../utils/logger';
 
@@ -17,8 +18,11 @@ async function parse(command: Command): Promise<void> {
   const page = await navigateToCanvas(browser, '/login/canvas');
   logger.info('Navigated to login page');
 
-  await freshLogin(page, command as ProvidedAuthInfo);
+  await freshLogin(page, command);
   logger.info('Authentication succeeded');
+
+  const target = await getTarget(command);
+  logger.info('Got target');
 
   const courses = await getAvailableCourses(page);
   logger.info('Found available courses');
@@ -29,7 +33,7 @@ async function parse(command: Command): Promise<void> {
   const iframePage = await loadTopicsIframeFromCoursePage(browser, page);
   logger.info('Navigated to course topics (iframe)');
 
-  const contentParser = new CourseParser(browser, iframePage);
+  const contentParser = new CourseParser(browser, iframePage, target);
 
   const courseContent = await contentParser.getContentFromCourse();
   logger.info('Successfully found Course content');
