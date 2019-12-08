@@ -8,17 +8,17 @@ import { navigateInNewPage } from '../utils/browser';
 import logger from '../utils/logger';
 import {
   ContentChunk,
-  Picture,
+  Image,
   getTopicTabs,
   getTopics,
   clickTopicByIndex,
   topicPath,
   parseTopicTitles,
-  replacePictures,
-  forgePictureUrl,
-  forgePictureTargetPath,
-  getPictureName,
-  downloadPicture,
+  replaceImages,
+  forgeImageUrl,
+  forgeImageTargetPath,
+  getImageName,
+  downloadImage,
   saveMarkdownFile,
 } from '../utils/content';
 
@@ -71,7 +71,6 @@ export default class CourseParser {
 
     const courseChunks: ContentChunksByTopic = {};
     for (const [index] of topics.entries()) {
-      logger.debug(`Parsing topic: (${index + 1})`);
       courseChunks[`topic_${activeTabIndex}_${index}`] = await this.getContentFromTopic(
         activeTabIndex,
         index,
@@ -91,6 +90,9 @@ export default class CourseParser {
     activeTopicIndex: number,
     topicsLength: number
   ): Promise<CourseContent> {
+    const topicNumber = activeTabIndex * topicsLength + (activeTopicIndex + 1);
+    logger.debug(`Parsing topic: (${topicNumber + 1})`);
+
     const page = await navigateInNewPage(this.browser, this.coursePage.url());
     await parseTopicTitles(page, activeTabIndex);
 
@@ -99,10 +101,9 @@ export default class CourseParser {
       page.waitForNavigation(),
     ]);
 
-    const topicNumber = activeTabIndex * topicsLength + (activeTopicIndex + 1);
     if (!(await exists(topicPath(topicNumber)))) {
       await mkdir(topicPath(topicNumber));
-      await mkdir(`${topicPath(topicNumber)}/pictures`);
+      await mkdir(`${topicPath(topicNumber)}/images`);
     }
 
     return this.extractTopicContent(page, topicNumber);
@@ -113,6 +114,7 @@ export default class CourseParser {
     const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
       return elements.map(element => element.innerHTML);
     });
+    logger.debug(`Found ${contentChunks.length} content chunks`);
 
     return this.parseContentChunks(contentChunks, page.url(), topicNumber);
   }
@@ -127,14 +129,18 @@ export default class CourseParser {
       const converter = new showdown.Converter();
 
       const markdownChunksPromises = chunks.map(async chunk => {
-        const pictures = await this.downloadPictures(chunk, pageUrl, topicNumber);
+        const images = await this.downloadImages(chunk, pageUrl, topicNumber);
+        logger.debug(`Downloaded ${images.length} images`);
         const markdownChunk = converter.makeMarkdown(chunk, dom.window.document);
-        const chunkWithPictures = replacePictures(markdownChunk, pictures);
-        return chunkWithPictures;
+        logger.debug('Converted chunks to Markdown');
+        const chunkWithImages = replaceImages(markdownChunk, images);
+        logger.debug('Replaced images in Markdown');
+        return chunkWithImages;
       });
 
       const parsedChunks = await Promise.all(markdownChunksPromises);
       const filePath = await saveMarkdownFile(parsedChunks, topicNumber);
+      logger.debug('Saved markdown File');
 
       return {
         path: filePath,
@@ -144,26 +150,26 @@ export default class CourseParser {
     }
   }
 
-  async downloadPictures(
+  async downloadImages(
     chunk: ContentChunk,
     pageUrl: string,
     topicNumber: number
-  ): Promise<Picture[]> {
+  ): Promise<Image[]> {
     const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
 
-    const picturePromises: Promise<Picture>[] = images.map(async picturePath => {
-      const picUrl = forgePictureUrl(picturePath, pageUrl);
-      const picPath = forgePictureTargetPath(picturePath, topicNumber);
+    const imagePromises: Promise<Image>[] = images.map(async imagePath => {
+      const picUrl = forgeImageUrl(imagePath, pageUrl);
+      const picPath = forgeImageTargetPath(imagePath, topicNumber);
 
-      await downloadPicture(this.browser, picUrl, picPath);
+      await downloadImage(this.browser, picUrl, picPath);
 
       return {
         path: picPath,
-        name: getPictureName(picPath),
+        name: getImageName(picPath),
       };
     });
 
-    return Promise.all(picturePromises);
+    return Promise.all(imagePromises);
   }
 }
 

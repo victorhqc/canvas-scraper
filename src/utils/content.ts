@@ -36,14 +36,14 @@ export async function parseTopicTitles(page: Page, activeTabIndex: number): Prom
   );
 }
 
-export function replacePictures(chunk: ContentChunk, pictures: Picture[]): ContentChunk {
-  return pictures.reduce((acc, picture) => {
-    const markdownPicture = `![${picture.name}](./pictures/${picture.name})`;
-    return acc.replace(/!\[.*\]\(.*\)/gi, markdownPicture);
+export function replaceImages(chunk: ContentChunk, images: Image[]): ContentChunk {
+  return images.reduce((acc, image) => {
+    const markdownImage = `![${image.name}](./images/${image.name})`;
+    return acc.replace(/!\[.*\]\(.*\)/gi, markdownImage);
   }, chunk);
 }
 
-export function forgePictureUrl(picturePath: PicturePath, pageUrl: string): string {
+export function forgeImageUrl(imagePath: ImagePath, pageUrl: string): string {
   const parsedUrl = url.parse(pageUrl);
 
   // Usually, the url will loke like:
@@ -57,15 +57,15 @@ export function forgePictureUrl(picturePath: PicturePath, pageUrl: string): stri
     throw new Error("Can't forge img url");
   }
 
-  return `${parsedUrl.protocol}//${parsedUrl.host}${cleanedPathname}${picturePath}`;
+  return `${parsedUrl.protocol}//${parsedUrl.host}${cleanedPathname}${imagePath}`;
 }
 
-export function forgePictureTargetPath(picturePath: PicturePath, topicNumber: number): PicturePath {
-  const pictureName = getPictureName(picturePath);
-  return `${topicPath(topicNumber)}/pictures/${pictureName}`;
+export function forgeImageTargetPath(imagePath: ImagePath, topicNumber: number): ImagePath {
+  const imageName = getImageName(imagePath);
+  return `${topicPath(topicNumber)}/images/${imageName}`;
 }
 
-export async function downloadPicture(
+export async function downloadImage(
   browser: Browser,
   picUrl: string,
   picPath: string
@@ -74,7 +74,7 @@ export async function downloadPicture(
   const imagePage = await navigateInNewPage(browser, picUrl);
   const source = await imagePage.goto(picUrl);
   if (!source) {
-    throw new PictureNotFound(picUrl);
+    throw new ImageNotFound(picUrl);
   }
 
   const readable = new Readable();
@@ -86,14 +86,14 @@ export async function downloadPicture(
   await pipeline(readable, fs.createWriteStream(picPath));
 }
 
-export function getPictureName(picturePath: PicturePath): string {
-  const pictureName = picturePath.match(/([^/]+\.[a-z]{3,4})/gi);
+export function getImageName(imagePath: ImagePath): string {
+  const imageName = imagePath.match(/([^/]+\.[a-z]{3,4})/gi);
 
-  if (!pictureName) {
-    throw new PictureBadName(picturePath);
+  if (!imageName) {
+    throw new ImageBadName(imagePath);
   }
 
-  return pictureName[0];
+  return imageName[0];
 }
 
 export function saveMarkdownFile(chunks: ContentChunk[], topicNumber: number): Promise<string> {
@@ -118,12 +118,12 @@ export function topicPath(topicNumber: number): string {
   return `content/topic_${topicNumber}`;
 }
 
-export class PictureNotFound extends Error {
-  contextMessage = "Couldn't find picture";
+export class ImageNotFound extends Error {
+  contextMessage = "Couldn't find image";
 }
 
-export class PictureBadName extends Error {
-  contextMessage = 'Picture has incorrect name or path';
+export class ImageBadName extends Error {
+  contextMessage = 'Image has incorrect name or path';
 }
 
 export class SaveMarkdownError extends Error {
@@ -131,8 +131,8 @@ export class SaveMarkdownError extends Error {
 }
 
 export type ContentChunk = string;
-export type PicturePath = string;
-export interface Picture {
-  path: PicturePath;
+export type ImagePath = string;
+export interface Image {
+  path: ImagePath;
   name: string;
 }
