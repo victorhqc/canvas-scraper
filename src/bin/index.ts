@@ -1,11 +1,7 @@
-import dotenv from 'dotenv';
 import { Command } from 'commander';
 import { parseCommand } from './parse';
 
 const packageJson = require('../../package.json') as PackageJson;
-
-dotenv.config({});
-
 const program = new Command();
 
 program

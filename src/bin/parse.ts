@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import dotenv from 'dotenv';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
 import { handleCommand } from '../utils/command-handler';
 import { ProvidedAuthInfo, freshLogin } from '../utils/authentication';
@@ -11,8 +10,6 @@ import {
 } from '../utils/courses';
 import CourseParser from '../parsers/CourseParser';
 import logger from '../utils/logger';
-
-dotenv.config({});
 
 async function parse(command: Command): Promise<void> {
   const browser = await launchBrowser();
