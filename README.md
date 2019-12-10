@@ -39,21 +39,21 @@ herramientas como [Pandoc](https://pandoc.org/) y [LateX](https://www.latex-proj
 ## Instalación
 
 ```sh
-npx canvas-scraping parse -u <USUARIO>
+npx canvas-scraper parse -u <USUARIO>
 
 # O con instalación global (Sólo instalarlo una vez)
-npm i -g canvas-scraping
+npm i -g canvas-scraper
 
-canvas-scraping parse -u <USUARIO>
+canvas-scraper parse -u <USUARIO>
 ```
 
 ## Comandos
 
 ```sh
-canvas-scraping <COMANDO> <ARGUMENTOS>
+canvas-scraper <COMANDO> <ARGUMENTOS>
 
 # Ejemplo
-canvas-scraping parse -u FOO -p BAR
+canvas-scraper parse -u FOO -p BAR
 ```
 
 **Parse**: Obtiene el contenido de un curso y crea archivos de Markdown para cada tema.
