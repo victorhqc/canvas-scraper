@@ -2,7 +2,13 @@
   "name": "canvas-scraper",
   "version": "0.0.0",
   "description": "Web Scraper para la plataforma de educación \"Canvas\"",
-  "main": "src/bin/index.js",
+  "main": "dist/main.js",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "canvas-scraper": "./dist/main.js"
+  },
   "scripts": {
     "build": "webpack",
     "lint-staged": "lint-staged",
