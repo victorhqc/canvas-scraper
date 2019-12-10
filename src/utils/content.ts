@@ -6,16 +6,19 @@ import path from 'path';
 import url from 'url';
 import { homedir } from 'os';
 import { Readable } from 'stream';
+import chalk from 'chalk';
 import { Browser, Page, JSHandle } from 'puppeteer';
 import { gatherInfo, ProvidedInfo } from './command-handler';
 import { buildGetElementHandle, navigateInNewPage } from './browser';
+import { ChosenCourse } from './courses';
+import { ContentParseResult } from '../parsers/CourseParser';
 
 const pipeline = promisify(stream.pipeline);
 
 const questions = [
   {
     name: 'target',
-    message: `Dónde quieres guardar el contenido? (Opcional, dejar vacío si no estás seguro)`,
+    message: `Dónde quieres guardar el contenido? (Opcional, dejar vacío para $HOME)`,
   },
 ];
 
@@ -155,6 +158,24 @@ export function getDefaultTarget(target: string, courseName: string): string {
 
 export function topicPath(target: string, topicNumber: number): string {
   return path.join(target, `topic_${topicNumber}`);
+}
+
+export function displayParsedContentResult(
+  chosenCourse: ChosenCourse,
+  result: ContentParseResult
+): void {
+  const boldCourse = chalk.bold.blue(chosenCourse.name);
+  console.log();
+  console.log(chalk.blue(`Se ha obtenido el contenido del curso ${boldCourse} exitosamente!`));
+  console.log();
+
+  for (const topicKey in result) {
+    const topicResult = result[topicKey];
+    console.log(chalk.bold.italic.blue(`Tema ${topicResult.topicNumber}`));
+    console.log(chalk.blue(`Archivo generado: ${topicResult.path}`));
+    console.log(chalk.blue(`Imágenes descargadas: ${topicResult.images}`));
+    console.log();
+  }
 }
 
 export class ImageNotFound extends Error {

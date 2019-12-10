@@ -48,7 +48,7 @@ export default class CourseParser {
     this.topicsIterationLength = 0;
   }
 
-  async getContentFromCourse(): Promise<ContentChunksByTopic> {
+  async getContentFromCourse(): Promise<ContentParseResult> {
     if (!(await exists(this.rootPath))) {
       await mkdir(this.rootPath);
     }
@@ -57,7 +57,7 @@ export default class CourseParser {
     this.spinner.text = `Obteniendo información de ${topicsLength} temas`;
 
     const tabs = await getTopicTabs(this.coursePage);
-    let result: ContentChunksByTopic = {};
+    let result: ContentParseResult = {};
     for (const [tabIndex] of tabs.entries()) {
       logger.debug(`Parsing topic tab: (${tabIndex + 1})`);
       const chunks = await this.getContentFromTopicsTab(tabIndex);
@@ -74,7 +74,7 @@ export default class CourseParser {
    * Navigates to a new page. This will allow us to avoid any pollution to the original page and
    * habe a blank canvas in each iteration.
    */
-  async getContentFromTopicsTab(activeTabIndex: number): Promise<ContentChunksByTopic> {
+  async getContentFromTopicsTab(activeTabIndex: number): Promise<ContentParseResult> {
     const page = await navigateInNewPage(this.browser, this.coursePage.url());
 
     await clickTopicByIndex(page, activeTabIndex);
@@ -82,7 +82,7 @@ export default class CourseParser {
 
     const topics = await getTopics(page);
 
-    const courseChunks: ContentChunksByTopic = {};
+    const courseChunks: ContentParseResult = {};
     for (const [index] of topics.entries()) {
       const topicNumber = activeTabIndex * this.topicsIterationLength + (index + 1);
       courseChunks[`topic_${topicNumber}`] = await this.getContentFromTopic(
@@ -170,6 +170,7 @@ export default class CourseParser {
 
       return {
         path: filePath,
+        topicNumber,
         images,
       };
     } catch (e) {
@@ -211,11 +212,12 @@ export interface CourseParserConfig {
   chosenCourse: ChosenCourse;
 }
 
-export interface ContentChunksByTopic {
+export interface ContentParseResult {
   [key: string]: CourseContent;
 }
 
 export interface CourseContent {
   path: string;
   images: number;
+  topicNumber: number;
 }

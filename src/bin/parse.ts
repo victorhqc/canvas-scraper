@@ -9,7 +9,7 @@ import {
   navigateToCourse,
   loadTopicsIframeFromCoursePage,
 } from '../utils/courses';
-import { getTarget } from '../utils/content';
+import { getTarget, displayParsedContentResult } from '../utils/content';
 import CourseParser from '../parsers/CourseParser';
 import logger from '../utils/logger';
 
@@ -44,8 +44,9 @@ async function parse(command: Command): Promise<void> {
   });
 
   const courseContent = await contentParser.getContentFromCourse();
+  spinner.stop();
   logger.info('Successfully found Course content');
-  console.log(courseContent);
+  displayParsedContentResult(chosenCourse, courseContent);
 
   logger.info('Parsing succeeded');
   process.exit(0);
