@@ -36,6 +36,17 @@ export async function clickTopicByIndex(page: Page, activeTabIndex: number): Pro
   await tab.click();
 }
 
+export async function getTopicsLength(page: Page): Promise<number> {
+  const elements = await page.$$eval(
+    `li:nth-child(1) a[title="Ideas clave"]`,
+    (elements: Element[]) => {
+      return elements;
+    }
+  );
+
+  return elements.length;
+}
+
 export async function parseTopicTitles(page: Page, activeTabIndex: number): Promise<void> {
   await page.$$eval(
     `#tcontent${activeTabIndex + 1} li:nth-child(1) a[title="Ideas clave"]`,

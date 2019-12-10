@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import ora from 'ora';
 import { launchBrowser, navigateToCanvas } from '../utils/browser';
 import { handleCommand } from '../utils/command-handler';
 import { freshLogin } from '../utils/authentication';
@@ -33,7 +34,8 @@ async function parse(command: Command): Promise<void> {
   const iframePage = await loadTopicsIframeFromCoursePage(browser, page);
   logger.info('Navigated to course topics (iframe)');
 
-  const contentParser = new CourseParser(browser, iframePage, target);
+  const spinner = ora(`Obteniendo información del curso: ${chosenCourse.name}`).start();
+
   const contentParser = new CourseParser(browser, {
     page: iframePage,
     target,

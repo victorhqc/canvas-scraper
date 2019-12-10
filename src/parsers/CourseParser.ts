@@ -4,6 +4,7 @@ import fs from 'fs';
 import { Browser, Page } from 'puppeteer';
 import showdown from 'showdown';
 import { JSDOM } from 'jsdom';
+import { Ora } from 'ora';
 import { navigateInNewPage } from '../utils/browser';
 import logger from '../utils/logger';
 import { ChosenCourse } from '../utils/courses';
@@ -12,6 +13,7 @@ import {
   Image,
   getTopicTabs,
   getTopics,
+  getTopicsLength,
   clickTopicByIndex,
   topicPath,
   getDefaultTarget,
@@ -31,6 +33,7 @@ export default class CourseParser {
   private browser: Browser;
   private coursePage: Page;
   private chosenCourse: ChosenCourse;
+  private spinner: Ora;
   private rootPath: string;
 
   private topicsIterationLength: number;
@@ -38,6 +41,7 @@ export default class CourseParser {
   constructor(browser: Browser, config: CourseParserConfig) {
     this.browser = browser;
     this.coursePage = config.page;
+    this.spinner = config.spinner;
     this.chosenCourse = config.chosenCourse;
     this.rootPath = getDefaultTarget(config.target, this.chosenCourse.name);
 
@@ -48,6 +52,9 @@ export default class CourseParser {
     if (!(await exists(this.rootPath))) {
       await mkdir(this.rootPath);
     }
+
+    const topicsLength = await getTopicsLength(this.coursePage);
+    this.spinner.text = `Obteniendo información de ${topicsLength} temas`;
 
     const tabs = await getTopicTabs(this.coursePage);
     let result: ContentChunksByTopic = {};
@@ -186,6 +193,7 @@ export class FailedParseContent extends Error {
 export interface CourseParserConfig {
   target: string;
   page: Page;
+  spinner: Ora;
   chosenCourse: ChosenCourse;
 }
 
