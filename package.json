@@ -1,6 +1,6 @@
 {
   "name": "canvas-scraper",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Web Scraper para la plataforma de educación \"Canvas\"",
   "main": "src/bin/index.js",
   "scripts": {
