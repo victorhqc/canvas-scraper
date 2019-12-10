@@ -18,7 +18,7 @@ export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise
   );
 
   if (courses.length == 0) {
-    if (retriedTimes >= 3) {
+    if (retriedTimes >= 5) {
       throw new NoCoursesError();
     }
 
