@@ -5,8 +5,8 @@ import { gatherInfo, ProvidedInfo } from './command-handler';
 import { buildGetElementHandle } from './browser';
 
 const questions = [
-  { name: 'username', message: 'What is your canvas username?' },
-  { name: 'password', message: 'What is your canvas password?', type: 'password' },
+  { name: 'username', message: 'Cuál es tu usuario de Canvas?' },
+  { name: 'password', message: 'Ingresa tu contraseña', type: 'password' },
 ];
 
 export async function freshLogin(

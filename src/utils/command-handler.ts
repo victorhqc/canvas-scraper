@@ -25,7 +25,6 @@ export async function gatherInfo<T extends Question[]>(
     providedInfo && providedInfo[parameter];
 
   const missingQuestions = questions.filter(({ name }) => !getOption(name));
-  console.log('MISSING QUESTIONS', missingQuestions);
   const answers = await inquirer.prompt<Answers<T>>(missingQuestions);
 
   const entries = questions.map(({ name }) => {

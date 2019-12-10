@@ -31,7 +31,7 @@ export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise
 }
 
 export async function chooseCourse(courses: Course[]): Promise<ChosenCourse> {
-  const chosenCourse = await inquirer.prompt<ChosenCourse>([
+  const chosenCourse = await inquirer.prompt<{ index: number }>([
     {
       type: 'list',
       name: 'index',
@@ -40,7 +40,10 @@ export async function chooseCourse(courses: Course[]): Promise<ChosenCourse> {
     },
   ]);
 
-  return chosenCourse;
+  return {
+    ...chosenCourse,
+    name: courses[chosenCourse.index].name,
+  };
 }
 
 export async function navigateToCourse(
@@ -72,13 +75,14 @@ export async function loadTopicsIframeFromCoursePage(browser: Browser, page: Pag
   return navigateInNewPage(browser, uri);
 }
 
-interface Course {
+export interface Course {
   name: string;
   value: number;
 }
 
-interface ChosenCourse {
+export interface ChosenCourse {
   index: number;
+  name: string;
 }
 
 export class NoCoursesError extends Error {

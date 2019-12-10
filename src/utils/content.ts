@@ -2,7 +2,9 @@
 import stream from 'stream';
 import { promisify } from 'util';
 import fs from 'fs';
+import path from 'path';
 import url from 'url';
+import { homedir } from 'os';
 import { Readable } from 'stream';
 import { Browser, Page, JSHandle } from 'puppeteer';
 import { gatherInfo, ProvidedInfo } from './command-handler';
@@ -10,7 +12,7 @@ import { buildGetElementHandle, navigateInNewPage } from './browser';
 
 const pipeline = promisify(stream.pipeline);
 
-const questions = [{ name: 'target', message: "Where do you want to save the course's content?" }];
+const questions = [{ name: 'target', message: `Dónde quieres guardar el contenido? (Opcional)` }];
 
 export async function getTarget(providedInfo: ProvidedInfo<typeof questions>): Promise<string> {
   const { target } = await gatherInfo<typeof questions>(questions, providedInfo);
@@ -131,8 +133,12 @@ export function saveMarkdownFile(
   });
 }
 
+export function getDefaultTarget(target: string, courseName: string): string {
+  return path.join(target || homedir(), courseName);
+}
+
 export function topicPath(target: string, topicNumber: number): string {
-  return `${target}/topic_${topicNumber}`;
+  return path.join(target, `topic_${topicNumber}`);
 }
 
 export class ImageNotFound extends Error {

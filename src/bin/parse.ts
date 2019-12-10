@@ -34,6 +34,12 @@ async function parse(command: Command): Promise<void> {
   logger.info('Navigated to course topics (iframe)');
 
   const contentParser = new CourseParser(browser, iframePage, target);
+  const contentParser = new CourseParser(browser, {
+    page: iframePage,
+    target,
+    spinner,
+    chosenCourse,
+  });
 
   const courseContent = await contentParser.getContentFromCourse();
   logger.info('Successfully found Course content');

@@ -6,6 +6,7 @@ import showdown from 'showdown';
 import { JSDOM } from 'jsdom';
 import { navigateInNewPage } from '../utils/browser';
 import logger from '../utils/logger';
+import { ChosenCourse } from '../utils/courses';
 import {
   ContentChunk,
   Image,
@@ -13,6 +14,7 @@ import {
   getTopics,
   clickTopicByIndex,
   topicPath,
+  getDefaultTarget,
   parseTopicTitles,
   replaceImages,
   forgeImageUrl,
@@ -28,21 +30,23 @@ const mkdir = promisify(fs.mkdir);
 export default class CourseParser {
   private browser: Browser;
   private coursePage: Page;
-  private target: string;
+  private chosenCourse: ChosenCourse;
+  private rootPath: string;
 
   private topicsIterationLength: number;
 
-  constructor(browser: Browser, page: Page, target: string) {
+  constructor(browser: Browser, config: CourseParserConfig) {
     this.browser = browser;
-    this.coursePage = page;
-    this.target = target;
+    this.coursePage = config.page;
+    this.chosenCourse = config.chosenCourse;
+    this.rootPath = getDefaultTarget(config.target, this.chosenCourse.name);
 
     this.topicsIterationLength = 0;
   }
 
   async getContentFromCourse(): Promise<ContentChunksByTopic> {
-    if (!(await exists(`${this.target}/`))) {
-      await mkdir(`${this.target}/`);
+    if (!(await exists(this.rootPath))) {
+      await mkdir(this.rootPath);
     }
 
     const tabs = await getTopicTabs(this.coursePage);
@@ -103,9 +107,9 @@ export default class CourseParser {
       page.waitForNavigation(),
     ]);
 
-    if (!(await exists(topicPath(this.target, topicNumber)))) {
-      await mkdir(topicPath(this.target, topicNumber));
-      await mkdir(`${topicPath(this.target, topicNumber)}/images`);
+    if (!(await exists(topicPath(this.rootPath, topicNumber)))) {
+      await mkdir(topicPath(this.rootPath, topicNumber));
+      await mkdir(`${topicPath(this.rootPath, topicNumber)}/images`);
     }
 
     return this.extractTopicContent(page, topicNumber);
@@ -141,7 +145,7 @@ export default class CourseParser {
       });
 
       const parsedChunks = await Promise.all(markdownChunksPromises);
-      const filePath = await saveMarkdownFile(parsedChunks, this.target, topicNumber);
+      const filePath = await saveMarkdownFile(parsedChunks, this.rootPath, topicNumber);
       logger.debug('Saved markdown File');
 
       return {
@@ -161,7 +165,7 @@ export default class CourseParser {
 
     const imagePromises: Promise<Image>[] = images.map(async imagePath => {
       const picUrl = forgeImageUrl(imagePath, pageUrl);
-      const picPath = forgeImageTargetPath(imagePath, this.target, topicNumber);
+      const picPath = forgeImageTargetPath(imagePath, this.rootPath, topicNumber);
 
       await downloadImage(this.browser, picUrl, picPath);
 
@@ -177,6 +181,12 @@ export default class CourseParser {
 
 export class FailedParseContent extends Error {
   contextMessage = 'Parsing content failed';
+}
+
+export interface CourseParserConfig {
+  target: string;
+  page: Page;
+  chosenCourse: ChosenCourse;
 }
 
 export interface ContentChunksByTopic {
