@@ -35,7 +35,7 @@ export async function chooseCourse(courses: Course[]): Promise<ChosenCourse> {
     {
       type: 'list',
       name: 'index',
-      message: 'Which course do you want to parse?',
+      message: 'Cuál curso quieres procesar?',
       choices: courses,
     },
   ]);

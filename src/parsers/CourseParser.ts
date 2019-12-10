@@ -84,10 +84,11 @@ export default class CourseParser {
 
     const courseChunks: ContentChunksByTopic = {};
     for (const [index] of topics.entries()) {
-      courseChunks[`topic_${activeTabIndex}_${index}`] = await this.getContentFromTopic(
+      const topicNumber = activeTabIndex * this.topicsIterationLength + (index + 1);
+      courseChunks[`topic_${topicNumber}`] = await this.getContentFromTopic(
         activeTabIndex,
         index,
-        this.topicsIterationLength
+        topicNumber
       );
     }
 
@@ -101,10 +102,10 @@ export default class CourseParser {
   async getContentFromTopic(
     activeTabIndex: number,
     activeTopicIndex: number,
-    topicsLength: number
+    topicNumber: number
   ): Promise<CourseContent> {
-    const topicNumber = activeTabIndex * topicsLength + (activeTopicIndex + 1);
-    logger.debug(`Parsing topic: (${topicNumber + 1})`);
+    logger.debug(`Parsing topic: (${topicNumber})`);
+    this.spinner.text = `Obteniendo información del tema ${topicNumber}`;
 
     const page = await navigateInNewPage(this.browser, this.coursePage.url());
     await parseTopicTitles(page, activeTabIndex);
@@ -148,15 +149,28 @@ export default class CourseParser {
         logger.debug('Converted chunks to Markdown');
         const chunkWithImages = replaceImages(markdownChunk, images);
         logger.debug('Replaced images in Markdown');
-        return chunkWithImages;
+        return {
+          chunks: chunkWithImages,
+          images: images.length,
+        };
       });
 
-      const parsedChunks = await Promise.all(markdownChunksPromises);
+      const results = await Promise.all(markdownChunksPromises);
+      const { chunks: parsedChunks, images } = results.reduce<{ chunks: string[]; images: number }>(
+        (acc, result) => ({
+          ...acc,
+          chunks: [...acc.chunks, result.chunks],
+          images: acc.images + result.images,
+        }),
+        { chunks: [], images: 0 }
+      );
+
       const filePath = await saveMarkdownFile(parsedChunks, this.rootPath, topicNumber);
       logger.debug('Saved markdown File');
 
       return {
         path: filePath,
+        images,
       };
     } catch (e) {
       throw new FailedParseContent(e);
@@ -203,4 +217,5 @@ export interface ContentChunksByTopic {
 
 export interface CourseContent {
   path: string;
+  images: number;
 }

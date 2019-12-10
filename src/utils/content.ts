@@ -12,7 +12,12 @@ import { buildGetElementHandle, navigateInNewPage } from './browser';
 
 const pipeline = promisify(stream.pipeline);
 
-const questions = [{ name: 'target', message: `Dónde quieres guardar el contenido? (Opcional)` }];
+const questions = [
+  {
+    name: 'target',
+    message: `Dónde quieres guardar el contenido? (Opcional, dejar vacío si no estás seguro)`,
+  },
+];
 
 export async function getTarget(providedInfo: ProvidedInfo<typeof questions>): Promise<string> {
   const { target } = await gatherInfo<typeof questions>(questions, providedInfo);
