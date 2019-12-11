@@ -1,6 +1,5 @@
 export default function getConfig(): Config {
   return {
-    firefoxPath: getEnvRequired('FIREFOX_PATH', ''),
     canvasHost: getEnvRequired('CANVAS_HOST', 'https://micampus.unir.net'),
     headless: getEnvBoolean('HEADLESS', 'true'),
     logLevel: getEnvRequired('LOG_LEVEL', 'info'),
@@ -9,7 +8,6 @@ export default function getConfig(): Config {
 }
 
 export interface Config {
-  firefoxPath: string;
   canvasHost: string;
   headless: boolean;
   logLevel: string;
