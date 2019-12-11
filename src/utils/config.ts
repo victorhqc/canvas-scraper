@@ -1,8 +1,8 @@
 export default function getConfig(): Config {
   return {
-    firefoxPath: getEnvRequired('FIREFOX_PATH'),
-    canvasHost: getEnvRequired('CANVAS_HOST'),
-    headless: getEnvBoolean('HEADLESS'),
+    firefoxPath: getEnvRequired('FIREFOX_PATH', ''),
+    canvasHost: getEnvRequired('CANVAS_HOST', 'https://micampus.unir.net'),
+    headless: getEnvBoolean('HEADLESS', 'true'),
     logLevel: getEnvRequired('LOG_LEVEL', 'info'),
     log: getEnvBoolean('LOG'),
   };
@@ -25,8 +25,8 @@ export function getEnvRequired(key: string, fallback?: string): string {
   return val;
 }
 
-export function getEnvBoolean(key: string): boolean {
-  const val = getEnv(key);
+export function getEnvBoolean(key: string, fallback?: string): boolean {
+  const val = getEnv(key, fallback);
 
   if (!val) {
     return false;
