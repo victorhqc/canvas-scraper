@@ -67,10 +67,19 @@ export async function parseTopicTitles(page: Page, activeTabIndex: number): Prom
 }
 
 export function replaceImages(chunk: ContentChunk, images: Image[]): ContentChunk {
-  return images.reduce((acc, image) => {
-    const markdownImage = `![${image.name}](./images/${image.name})`;
-    return acc.replace(/!\[.*\]\(.*\)/gi, markdownImage);
+  const replacedImages = images.reduce((acc, _, index) => {
+    const temporaryImage = `%%IMAGE_${index}%%`;
+    return acc.replace(/!\[.*\]\(.*\)/i, temporaryImage);
   }, chunk);
+
+  const result = images.reduce((acc, image, index) => {
+    const markdownImage = `![${image.name}](./images/${image.name})`;
+
+    const regexp = new RegExp(`%%IMAGE_${index}%%`);
+    return acc.replace(regexp, markdownImage);
+  }, replacedImages);
+
+  return result;
 }
 
 export function forgeImageUrl(imagePath: ImagePath, pageUrl: string): string {
