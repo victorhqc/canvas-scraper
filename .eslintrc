@@ -16,7 +16,8 @@
   "env": {
     "browser": true,
     "es6": true,
-    "node": true
+    "node": true,
+    "jest": true
   },
   "rules": {
     "@typescript-eslint/explicit-function-return-type": ["error", { "allowExpressions": true }],

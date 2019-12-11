@@ -121,7 +121,7 @@ export async function downloadImage(
 }
 
 export function getImageName(imagePath: ImagePath): string {
-  const imageName = imagePath.match(/([^/]+\.[a-z]{3,4})/gi);
+  const imageName = imagePath.match(/([^/]+\.[a-z]{3,4}$)/gi);
 
   if (!imageName) {
     throw new ImageBadName(imagePath);
