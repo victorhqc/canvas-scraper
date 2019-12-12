@@ -14,31 +14,45 @@ describe('getImageName', () => {
 
 describe('replaceImages', () => {
   const image1 = {
-    path: '/some/path/can-be_comp.lex@123/foo.jpg',
-    name: 'foo.jpg',
+    description: '',
+    originalPath: 'old/foo/bar/cancion.jpg',
+    path: 'hello/canción.jpg',
+    name: 'canción.jpg',
   };
 
   const image2 = {
-    path: '/some/path/can-be_comp.lex@123/bar.jpg',
+    description: '',
+    originalPath: 'old/another/whatever/picture.jpg',
+    path: 'another/picture.jpg',
     name: 'bar.jpg',
+  };
+
+  const image3 = {
+    description: '',
+    originalPath: 'hello/old/inlink.jpg',
+    path: 'image/inlink.jpg',
+    name: 'baz.jpg',
   };
 
   it('Should replace the images in a markdown chunk', () => {
     const chunk = `
-      Hello World
-      ![REPLACE THIS](<hello/world.jpg> "Something that should be deleted plz. 123@~!")
+      <p>Hello World</p>
+      <img src="old/foo/bar/cancion.jpg" alt="Hey there, first image" />
 
-      And another
-      ![Another picture](some/broke._-npath "hello")
+      <p>And another</p>
+      <img src="old/another/whatever/picture.jpg" />
+
+      <a href="hello/old/inlink.jpg">Hello World</a>
     `;
 
-    expect(replaceImages(chunk, [image1, image2])).toMatchInlineSnapshot(`
-      "
-            Hello World
-            ![foo.jpg](./images/foo.jpg)
+    expect(replaceImages(chunk, [image1, image2, image3])).toMatchInlineSnapshot(`
+      "<p>Hello World</p>
+            <img src=\\"./images/canción.jpg\\" alt=\\"Hey there, first image\\">
 
-            And another
-            ![bar.jpg](./images/bar.jpg)
+            <p>And another</p>
+            <img src=\\"./images/bar.jpg\\">
+
+            <a href=\\"./images/baz.jpg\\">Hello World</a>
           "
     `);
   });

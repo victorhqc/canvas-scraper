@@ -2,8 +2,6 @@
 import { promisify } from 'util';
 import fs from 'fs';
 import { Browser, Page } from 'puppeteer';
-import showdown from 'showdown';
-import { JSDOM } from 'jsdom';
 import { Ora } from 'ora';
 import { navigateInNewPage } from '../utils/browser';
 import logger from '../utils/logger';
@@ -19,12 +17,15 @@ import {
   getDefaultTarget,
   parseTopicTitles,
   replaceImages,
+  findImages,
   forgeImageUrl,
+  fixImagesInMarkdown,
   forgeImageTargetPath,
   getImageName,
   downloadImage,
   saveMarkdownFile,
   sanitizeHTML,
+  sanitizeMarkdown,
 } from '../utils/content';
 
 const exists = promisify(fs.exists);
@@ -128,13 +129,16 @@ export default class CourseParser {
     await page.waitFor('.virtualpage');
     logger.debug(`Extracting course content from topic ${topicNumber}`);
     const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
-      return elements.map(element => element.innerHTML);
+      return elements.map(element => {
+        const sanitized = new DOMParser().parseFromString(element.innerHTML, 'text/html');
+        return sanitized.body.innerHTML;
+      });
     });
     const sanitizedChunks = contentChunks.map(chunk => sanitizeHTML(chunk));
 
     logger.debug(`Found ${sanitizedChunks.length} content chunks for topic ${topicNumber}`);
 
-    return this.parseContentChunks(sanitizedChunks, page.url(), topicNumber);
+    return this.parseContentChunks(contentChunks, page.url(), topicNumber);
   }
 
   async parseContentChunks(
@@ -143,18 +147,21 @@ export default class CourseParser {
     topicNumber: number
   ): Promise<CourseContent> {
     try {
-      const dom = new JSDOM();
-      const converter = new showdown.Converter();
-
       const markdownChunksPromises = chunks.map(async chunk => {
         const images = await this.downloadImages(chunk, pageUrl, topicNumber);
         logger.debug(`Downloaded ${images.length} images`);
-        const markdownChunk = converter.makeMarkdown(chunk, dom.window.document);
-        logger.debug('Converted chunks to Markdown');
-        const chunkWithImages = replaceImages(markdownChunk, images);
+
         logger.debug('Replaced images in Markdown');
+        const chunkWithImages = replaceImages(chunk, images);
+
+        logger.debug('Converted chunks to Markdown');
+        const markdownChunk = sanitizeMarkdown(chunkWithImages);
+
+        // Fix broken images in markdown
+        const sanitizedChunk = fixImagesInMarkdown(markdownChunk, images);
+
         return {
-          chunks: chunkWithImages,
+          chunks: sanitizedChunk,
           images: images.length,
         };
       });
@@ -187,15 +194,17 @@ export default class CourseParser {
     pageUrl: string,
     topicNumber: number
   ): Promise<Image[]> {
-    const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
+    const images = findImages(chunk);
 
-    const imagePromises: Promise<Image>[] = images.map(async imagePath => {
-      const picUrl = forgeImageUrl(imagePath, pageUrl);
-      const picPath = forgeImageTargetPath(imagePath, this.rootPath, topicNumber);
+    const imagePromises: Promise<Image>[] = images.map(async img => {
+      const picUrl = forgeImageUrl(img.originalPath, pageUrl);
+      const picPath = forgeImageTargetPath(img.originalPath, this.rootPath, topicNumber);
 
       await downloadImage(this.browser, picUrl, picPath);
 
       return {
+        description: img.description,
+        originalPath: img.originalPath,
         path: picPath,
         name: getImageName(picPath),
       };

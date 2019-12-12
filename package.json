@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "chalk": "^3.0.0",
+    "cheerio": "^1.0.0-rc.3",
     "commander": "^4.0.1",
     "dotenv": "^8.2.0",
     "foxr": "^0.10.0",
@@ -30,6 +31,7 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
+    "@types/cheerio": "^0.22.15",
     "@types/inquirer": "^6.5.0",
     "@types/jest": "^24.0.23",
     "@types/jsdom": "^12.2.4",
