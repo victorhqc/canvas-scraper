@@ -7,6 +7,7 @@ import url from 'url';
 import { homedir } from 'os';
 import { Readable } from 'stream';
 import chalk from 'chalk';
+import { JSDOM } from 'jsdom';
 import { Browser, Page, JSHandle } from 'puppeteer';
 import { gatherInfo, ProvidedInfo } from './command-handler';
 import { buildGetElementHandle, navigateInNewPage } from './browser';
@@ -185,6 +186,16 @@ export function displayParsedContentResult(
     console.log(chalk.blue(`Imágenes descargadas: ${topicResult.images}`));
     console.log();
   }
+}
+
+export function sanitizeHTML(html: string): string {
+  const dom = new JSDOM();
+  const doc = dom.window.document;
+
+  const element = doc.implementation.createHTMLDocument().createElement('div');
+  element.innerHTML = html;
+
+  return element.innerHTML;
 }
 
 export class ImageNotFound extends Error {

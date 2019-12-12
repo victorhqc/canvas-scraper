@@ -24,6 +24,7 @@ import {
   getImageName,
   downloadImage,
   saveMarkdownFile,
+  sanitizeHTML,
 } from '../utils/content';
 
 const exists = promisify(fs.exists);
@@ -125,12 +126,15 @@ export default class CourseParser {
 
   async extractTopicContent(page: Page, topicNumber: number): Promise<CourseContent> {
     await page.waitFor('.virtualpage');
+    logger.debug(`Extracting course content from topic ${topicNumber}`);
     const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
       return elements.map(element => element.innerHTML);
     });
-    logger.debug(`Found ${contentChunks.length} content chunks`);
+    const sanitizedChunks = contentChunks.map(chunk => sanitizeHTML(chunk));
 
-    return this.parseContentChunks(contentChunks, page.url(), topicNumber);
+    logger.debug(`Found ${sanitizedChunks.length} content chunks for topic ${topicNumber}`);
+
+    return this.parseContentChunks(sanitizedChunks, page.url(), topicNumber);
   }
 
   async parseContentChunks(
