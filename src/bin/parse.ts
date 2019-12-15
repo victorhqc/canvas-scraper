@@ -56,7 +56,7 @@ export function parseOptions(command: Command): Command {
   return command
     .option('-u, --username <username>', 'Canvas username, example: ABCD012345')
     .option('-p, --password <password>', 'Password')
-    .option('t, --target <target>', 'Target path, i.e. "~/Desktop/"');
+    .option('-t, --target <target>', 'Target path, i.e. "~/Desktop/"');
 }
 
 export function parseCommand(command: Command): Command {
