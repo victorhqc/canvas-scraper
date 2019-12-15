@@ -8,7 +8,6 @@ import { homedir } from 'os';
 import { Readable } from 'stream';
 import chalk from 'chalk';
 import { JSDOM } from 'jsdom';
-import showdown from 'showdown';
 import cheerio from 'cheerio';
 import { Browser, Page, JSHandle } from 'puppeteer';
 import { gatherInfo, ProvidedInfo } from './command-handler';
@@ -249,33 +248,6 @@ export function sanitizeHTML(html: string): string {
   element.innerHTML = html;
 
   return element.innerHTML;
-}
-
-export function sanitizeMarkdown(chunk: ContentChunk): ContentChunk {
-  const dom = new JSDOM();
-  const converter = new showdown.Converter();
-  const $ = cheerio.load(chunk, { decodeEntities: false });
-  const text = $('body').text();
-
-  const markdownChunk = converter.makeMarkdown(chunk, dom.window.document);
-
-  if (markdownChunk.length <= text.length * 0.3) {
-    return `
-  **FAILED MARKDOWN PARSING**
-
-  Original HTML
-  \`\`\`html
-  ${$('body').html()}
-  \`\`\`
-
-  Failed Markdown Parsing
-  \`\`\`markdown
-  ${markdownChunk}
-  \`\`\`
-  `;
-  }
-
-  return markdownChunk;
 }
 
 export class ImageNotFound extends Error {

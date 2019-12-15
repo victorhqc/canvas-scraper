@@ -25,8 +25,10 @@ import {
   downloadImage,
   saveMarkdownFile,
   sanitizeHTML,
-  sanitizeMarkdown,
 } from '../utils/content';
+
+import { sanitizeMarkdown, replaceTableForText, cleanupDefinitionTables } from '../utils/markdown';
+import { compose } from '../utils/compose';
 
 const exists = promisify(fs.exists);
 const mkdir = promisify(fs.mkdir);
@@ -155,7 +157,14 @@ export default class CourseParser {
         const chunkWithImages = replaceImages(chunk, images);
 
         logger.debug('Converted chunks to Markdown');
-        const markdownChunk = sanitizeMarkdown(chunkWithImages);
+        const markdownChunk = compose(
+          // 3. Sanitize Markdown.
+          sanitizeMarkdown,
+          // 2. Replace any table, as they're difficult to cleanup.
+          replaceTableForText,
+          // 1. First cleanup definitions
+          cleanupDefinitionTables
+        )(chunkWithImages);
 
         // Fix broken images in markdown
         const sanitizedChunk = fixImagesInMarkdown(markdownChunk, images);
