@@ -2,8 +2,6 @@
 import { promisify } from 'util';
 import fs from 'fs';
 import { Browser, Page } from 'puppeteer';
-import showdown from 'showdown';
-import { JSDOM } from 'jsdom';
 import { Ora } from 'ora';
 import { navigateInNewPage } from '../utils/browser';
 import logger from '../utils/logger';
@@ -19,12 +17,18 @@ import {
   getDefaultTarget,
   parseTopicTitles,
   replaceImages,
+  findImages,
   forgeImageUrl,
+  fixImagesInMarkdown,
   forgeImageTargetPath,
   getImageName,
   downloadImage,
   saveMarkdownFile,
+  sanitizeHTML,
 } from '../utils/content';
+
+import { sanitizeMarkdown, replaceTableForText, cleanupDefinitionTables } from '../utils/markdown';
+import { compose } from '../utils/compose';
 
 const exists = promisify(fs.exists);
 const mkdir = promisify(fs.mkdir);
@@ -125,10 +129,16 @@ export default class CourseParser {
 
   async extractTopicContent(page: Page, topicNumber: number): Promise<CourseContent> {
     await page.waitFor('.virtualpage');
+    logger.debug(`Extracting course content from topic ${topicNumber}`);
     const contentChunks = await page.$$eval('.virtualpage', (elements: Element[]) => {
-      return elements.map(element => element.innerHTML);
+      return elements.map(element => {
+        const sanitized = new DOMParser().parseFromString(element.innerHTML, 'text/html');
+        return sanitized.body.innerHTML;
+      });
     });
-    logger.debug(`Found ${contentChunks.length} content chunks`);
+    const sanitizedChunks = contentChunks.map(chunk => sanitizeHTML(chunk));
+
+    logger.debug(`Found ${sanitizedChunks.length} content chunks for topic ${topicNumber}`);
 
     return this.parseContentChunks(contentChunks, page.url(), topicNumber);
   }
@@ -139,18 +149,28 @@ export default class CourseParser {
     topicNumber: number
   ): Promise<CourseContent> {
     try {
-      const dom = new JSDOM();
-      const converter = new showdown.Converter();
-
       const markdownChunksPromises = chunks.map(async chunk => {
         const images = await this.downloadImages(chunk, pageUrl, topicNumber);
         logger.debug(`Downloaded ${images.length} images`);
-        const markdownChunk = converter.makeMarkdown(chunk, dom.window.document);
-        logger.debug('Converted chunks to Markdown');
-        const chunkWithImages = replaceImages(markdownChunk, images);
+
         logger.debug('Replaced images in Markdown');
+        const chunkWithImages = replaceImages(chunk, images);
+
+        logger.debug('Converted chunks to Markdown');
+        const markdownChunk = compose(
+          // 3. Sanitize Markdown.
+          sanitizeMarkdown,
+          // 2. Replace any table, as they're difficult to cleanup.
+          replaceTableForText,
+          // 1. First cleanup definitions
+          cleanupDefinitionTables
+        )(chunkWithImages);
+
+        // Fix broken images in markdown
+        const sanitizedChunk = fixImagesInMarkdown(markdownChunk, images);
+
         return {
-          chunks: chunkWithImages,
+          chunks: sanitizedChunk,
           images: images.length,
         };
       });
@@ -183,15 +203,17 @@ export default class CourseParser {
     pageUrl: string,
     topicNumber: number
   ): Promise<Image[]> {
-    const images = chunk.match(/(([^\s^\t^<^>^"^=]+)\.(png|jpg|jpeg|gif))/gi) || [];
+    const images = findImages(chunk);
 
-    const imagePromises: Promise<Image>[] = images.map(async imagePath => {
-      const picUrl = forgeImageUrl(imagePath, pageUrl);
-      const picPath = forgeImageTargetPath(imagePath, this.rootPath, topicNumber);
+    const imagePromises: Promise<Image>[] = images.map(async img => {
+      const picUrl = forgeImageUrl(img.originalPath, pageUrl);
+      const picPath = forgeImageTargetPath(img.originalPath, this.rootPath, topicNumber);
 
       await downloadImage(this.browser, picUrl, picPath);
 
       return {
+        description: img.description,
+        originalPath: img.originalPath,
         path: picPath,
         name: getImageName(picPath),
       };

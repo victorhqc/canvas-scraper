@@ -1,6 +1,8 @@
 import { Command } from 'commander';
 import inquirer from 'inquirer';
+import chalk from 'chalk';
 import logger from './logger';
+import config from './config';
 
 export function handleCommand(commandAction: (program: Command) => Promise<string | void>) {
   return async (program: Command) => {
@@ -12,6 +14,10 @@ export function handleCommand(commandAction: (program: Command) => Promise<strin
     } catch (error) {
       const errorMessage = error.contextMessage || 'Some error occurred';
       logger.error(`${errorMessage}: ${error.message}`);
+      if (config().log) {
+        console.log(chalk.bold.red(error.contextMessage));
+        console.log(chalk.red(error.message));
+      }
       process.exit(1);
     }
   };

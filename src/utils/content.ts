@@ -7,6 +7,8 @@ import url from 'url';
 import { homedir } from 'os';
 import { Readable } from 'stream';
 import chalk from 'chalk';
+import { JSDOM } from 'jsdom';
+import cheerio from 'cheerio';
 import { Browser, Page, JSHandle } from 'puppeteer';
 import { gatherInfo, ProvidedInfo } from './command-handler';
 import { buildGetElementHandle, navigateInNewPage } from './browser';
@@ -67,19 +69,70 @@ export async function parseTopicTitles(page: Page, activeTabIndex: number): Prom
 }
 
 export function replaceImages(chunk: ContentChunk, images: Image[]): ContentChunk {
+  const $ = cheerio.load(chunk, { decodeEntities: false });
+
+  images.forEach(image => {
+    $(`[src="${image.originalPath}"]`).attr('src', `./images/${image.name}`);
+    $(`[href="${image.originalPath}"]`).attr('href', `./images/${image.name}`);
+  });
+
+  return $('body').html() || chunk;
+}
+
+export function fixImagesInMarkdown(chunk: ContentChunk, images: Image[]): ContentChunk {
   const replacedImages = images.reduce((acc, _, index) => {
     const temporaryImage = `%%IMAGE_${index}%%`;
     return acc.replace(/!\[.*\]\(.*\)/i, temporaryImage);
   }, chunk);
 
   const result = images.reduce((acc, image, index) => {
-    const markdownImage = `![${image.name}](./images/${image.name})`;
+    const markdownImage = `![${image.description}](./images/${image.name})`;
 
     const regexp = new RegExp(`%%IMAGE_${index}%%`);
     return acc.replace(regexp, markdownImage);
   }, replacedImages);
 
   return result;
+}
+
+export function findImages(chunk: ContentChunk): IncompleteImage[] {
+  const $ = cheerio.load(chunk, { decodeEntities: false });
+
+  const imagePaths: IncompleteImage[] = [];
+
+  const addImagePathsFromElement = (index: number, element: CheerioElement): void => {
+    if (element.attribs['href']) {
+      imagePaths.push({
+        description: $('[href]')
+          .eq(index)
+          .text(),
+        originalPath: element.attribs['href'],
+      });
+    }
+
+    if (element.attribs['src']) {
+      imagePaths.push({
+        description: element.attribs['alt'] || element.attribs['title'] || element.attribs['src'],
+        originalPath: element.attribs['src'],
+      });
+    }
+  };
+
+  $('[href]')
+    .filter(index => {
+      return Boolean(
+        (
+          $('[href]')
+            .eq(index)
+            .attr('href') || ''
+        ).match(/\.(png|jpg|jpeg|gif)$/)
+      );
+    })
+    .map(addImagePathsFromElement);
+
+  $('img').map(addImagePathsFromElement);
+
+  return imagePaths;
 }
 
 export function forgeImageUrl(imagePath: ImagePath, pageUrl: string): string {
@@ -187,6 +240,16 @@ export function displayParsedContentResult(
   }
 }
 
+export function sanitizeHTML(html: string): string {
+  const dom = new JSDOM();
+  const doc = dom.window.document;
+
+  const element = doc.implementation.createHTMLDocument().createElement('div');
+  element.innerHTML = html;
+
+  return element.innerHTML;
+}
+
 export class ImageNotFound extends Error {
   contextMessage = "Couldn't find image";
 }
@@ -201,7 +264,13 @@ export class SaveMarkdownError extends Error {
 
 export type ContentChunk = string;
 export type ImagePath = string;
-export interface Image {
+
+export interface IncompleteImage {
+  originalPath: string;
+  description: string;
+}
+
+export interface Image extends IncompleteImage {
   path: ImagePath;
   name: string;
 }
