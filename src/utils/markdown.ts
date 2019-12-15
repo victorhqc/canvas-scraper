@@ -53,10 +53,7 @@ export function replaceTableForText(chunk: ContentChunk): ContentChunk {
 
   const tables = element.querySelectorAll('table');
 
-  let changedSomething = false;
   tables.forEach(table => {
-    changedSomething = true;
-
     Array.prototype.forEach.call(table.rows, (row: HTMLTableRowElement) => {
       const paragraph = doc.createElement('p');
 
@@ -73,10 +70,6 @@ export function replaceTableForText(chunk: ContentChunk): ContentChunk {
   });
 
   element.querySelectorAll('table').forEach(table => table.remove());
-
-  if (changedSomething) {
-    console.log(element.innerHTML);
-  }
 
   return element.innerHTML;
 }
