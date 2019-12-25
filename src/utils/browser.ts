@@ -26,7 +26,7 @@ export function navigateToCanvas(browser: Browser, path?: string): Promise<Page>
 export async function navigateInNewPage(browser: Browser, url: string): Promise<Page> {
   const page = await browser.newPage();
   await page.goto(url, {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'networkidle0',
   });
   await page.bringToFront();
 
