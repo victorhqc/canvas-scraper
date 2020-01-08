@@ -167,7 +167,7 @@ export async function downloadImage(
   picPath: string
 ): Promise<void> {
   // We need to go to a new tab our it throws a navigation error.
-  const imagePage = await navigateInNewPage(browser, picUrl);
+  const imagePage = await navigateInNewPage(browser, picUrl, 'networkidle0');
   const source = await imagePage.goto(picUrl);
   if (!source) {
     throw new ImageNotFound(picUrl);

@@ -3,7 +3,7 @@
 //   TPage as Page,
 //   TElementHandle as ElementHandle,
 // } from 'foxr';
-import puppeteer, { Browser, Page, ElementHandle } from 'puppeteer';
+import puppeteer, { Browser, Page, ElementHandle, NavigationOptions } from 'puppeteer';
 // import uuidv4 from 'uuid/v4';
 import getConfig from './config';
 
@@ -23,10 +23,14 @@ export function navigateToCanvas(browser: Browser, path?: string): Promise<Page>
   return navigateInNewPage(browser, `${getConfig().canvasHost}${path}`);
 }
 
-export async function navigateInNewPage(browser: Browser, url: string): Promise<Page> {
+export async function navigateInNewPage(
+  browser: Browser,
+  url: string,
+  waitUntil: NavigationOptions['waitUntil'] = 'domcontentloaded'
+): Promise<Page> {
   const page = await browser.newPage();
   await page.goto(url, {
-    waitUntil: 'networkidle0',
+    waitUntil,
   });
   await page.bringToFront();
 
