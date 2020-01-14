@@ -64,8 +64,12 @@ Argumentos:
 
 - `help`: Muestra la ayuda del comando
 - `u` o `username`: Usuario de Canvas.
-- `p` o `password`: Contraseña de usuario.
-- `t` o `target`: Directorio donde se guardará el contenido.
+- `p` o `path` (Opcional): Directorio donde se guardará el contenido. Por defecto
+  será el directorio actual
+- `t` o `topic` (Opcional): Tema a leer, por defecto intentará con todos los temas
+  del curso.
+- `password` (Opcional): Contraseña de usuario.
+
 
 ## Desarrollo
 
