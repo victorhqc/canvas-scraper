@@ -9,7 +9,7 @@ import {
   navigateToCourse,
   loadTopicsIframeFromCoursePage,
 } from '../utils/courses';
-import { getTarget, displayParsedContentResult } from '../utils/content';
+import { getPath, displayParsedContentResult } from '../utils/content';
 import CourseParser from '../parsers/CourseParser';
 import logger from '../utils/logger';
 
@@ -22,8 +22,8 @@ async function parse(command: Command): Promise<void> {
   await freshLogin(page, command);
   logger.info('Authentication succeeded');
 
-  const target = await getTarget(command);
-  logger.info('Got target');
+  const path = await getPath(command);
+  logger.info('Got path');
 
   const courses = await getAvailableCourses(page);
   logger.info('Found available courses');
@@ -38,7 +38,7 @@ async function parse(command: Command): Promise<void> {
 
   const contentParser = new CourseParser(browser, {
     page: iframePage,
-    target,
+    path,
     spinner,
     chosenCourse,
   });
@@ -55,8 +55,8 @@ async function parse(command: Command): Promise<void> {
 export function parseOptions(command: Command): Command {
   return command
     .option('-u, --username <username>', 'Canvas username, example: ABCD012345')
-    .option('-p, --password <password>', 'Password')
-    .option('-t, --target <target>', 'Target path, i.e. "~/Desktop/"');
+    .option('--password <password>', 'Password')
+    .option('-p, --path <path>', 'Target path, i.e. "~/Desktop/"');
 }
 
 export function parseCommand(command: Command): Command {

@@ -14,7 +14,7 @@ import {
   getTopicsLength,
   clickTopicByIndex,
   topicPath,
-  getDefaultTarget,
+  getDefaultPath,
   parseTopicTitles,
   replaceImages,
   findImages,
@@ -47,7 +47,7 @@ export default class CourseParser {
     this.coursePage = config.page;
     this.spinner = config.spinner;
     this.chosenCourse = config.chosenCourse;
-    this.rootPath = getDefaultTarget(config.target, this.chosenCourse.name);
+    this.rootPath = getDefaultPath(config.path, this.chosenCourse.name);
 
     this.topicsIterationLength = 0;
   }
@@ -228,7 +228,7 @@ export class FailedParseContent extends Error {
 }
 
 export interface CourseParserConfig {
-  target: string;
+  path: string;
   page: Page;
   spinner: Ora;
   chosenCourse: ChosenCourse;

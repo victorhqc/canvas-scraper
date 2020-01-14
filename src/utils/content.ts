@@ -4,7 +4,6 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
-import { homedir } from 'os';
 import { Readable } from 'stream';
 import chalk from 'chalk';
 import { JSDOM } from 'jsdom';
@@ -19,15 +18,15 @@ const pipeline = promisify(stream.pipeline);
 
 const questions = [
   {
-    name: 'target',
-    message: `Dónde quieres guardar el contenido? (Opcional, dejar vacío para $HOME)`,
+    name: 'path',
+    message: `Dónde quieres guardar el contenido? (Opcional, dejar vacío si es aquí mismo)`,
   },
 ];
 
-export async function getTarget(providedInfo: ProvidedInfo<typeof questions>): Promise<string> {
-  const { target } = await gatherInfo<typeof questions>(questions, providedInfo);
+export async function getPath(providedInfo: ProvidedInfo<typeof questions>): Promise<string> {
+  const { path } = await gatherInfo<typeof questions>(questions, providedInfo);
 
-  return target;
+  return path;
 }
 
 export async function getTopics(page: Page): Promise<JSHandle[]> {
@@ -154,11 +153,11 @@ export function forgeImageUrl(imagePath: ImagePath, pageUrl: string): string {
 
 export function forgeImageTargetPath(
   imagePath: ImagePath,
-  target: string,
+  path: string,
   topicNumber: number
 ): ImagePath {
   const imageName = getImageName(imagePath);
-  return `${topicPath(target, topicNumber)}/images/${imageName}`;
+  return `${topicPath(path, topicNumber)}/images/${imageName}`;
 }
 
 export async function downloadImage(
@@ -194,11 +193,11 @@ export function getImageName(imagePath: ImagePath): string {
 
 export function saveMarkdownFile(
   chunks: ContentChunk[],
-  target: string,
+  path: string,
   topicNumber: number
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const filePath = `${topicPath(target, topicNumber)}/README.md`;
+    const filePath = `${topicPath(path, topicNumber)}/README.md`;
     const file = fs.createWriteStream(filePath);
 
     file.on('error', e => {
@@ -214,12 +213,12 @@ export function saveMarkdownFile(
   });
 }
 
-export function getDefaultTarget(target: string, courseName: string): string {
-  return path.join(target || homedir(), courseName);
+export function getDefaultPath(targetPath: string, courseName: string): string {
+  return path.join(targetPath || process.cwd(), courseName);
 }
 
-export function topicPath(target: string, topicNumber: number): string {
-  return path.join(target, `topic_${topicNumber}`);
+export function topicPath(targetPath: string, topicNumber: number): string {
+  return path.join(targetPath, `topic_${topicNumber}`);
 }
 
 export function displayParsedContentResult(
