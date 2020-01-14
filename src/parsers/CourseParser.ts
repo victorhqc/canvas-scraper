@@ -39,6 +39,7 @@ export default class CourseParser {
   private chosenCourse: ChosenCourse;
   private spinner: Ora;
   private rootPath: string;
+  private topic: number | null;
 
   private topicsIterationLength: number;
 
@@ -47,6 +48,7 @@ export default class CourseParser {
     this.coursePage = config.page;
     this.spinner = config.spinner;
     this.chosenCourse = config.chosenCourse;
+    this.topic = config.topic;
     this.rootPath = getDefaultPath(config.path, this.chosenCourse.name);
 
     this.topicsIterationLength = 0;
@@ -89,6 +91,9 @@ export default class CourseParser {
     const courseChunks: ContentParseResult = {};
     for (const [index] of topics.entries()) {
       const topicNumber = activeTabIndex * this.topicsIterationLength + (index + 1);
+
+      if (this.topic && this.topic !== topicNumber) continue;
+
       courseChunks[`topic_${topicNumber}`] = await this.getContentFromTopic(
         activeTabIndex,
         index,
@@ -229,6 +234,7 @@ export class FailedParseContent extends Error {
 
 export interface CourseParserConfig {
   path: string;
+  topic: number | null;
   page: Page;
   spinner: Ora;
   chosenCourse: ChosenCourse;
