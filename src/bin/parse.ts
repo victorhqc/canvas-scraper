@@ -62,7 +62,7 @@ export function parseOptions(command: Command): Command {
     .option('-u, --username <username>', 'Canvas username, example: ABCD012345')
     .option('--password <password>', 'Password')
     .option('-p, --path <path>', 'Target path, i.e. "~/Desktop/"')
-    .option('t, --topic <topic>', 'Desired topic to parse, i.e "5"');
+    .option('-t, --topic <topic>', 'Desired topic to parse, i.e "5"');
 }
 
 export function parseCommand(command: Command): Command {
