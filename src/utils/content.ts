@@ -207,9 +207,10 @@ export function saveMarkdownFile(
     chunks.forEach(chunk => {
       file.write(chunk);
     });
-    file.end();
 
-    resolve(filePath);
+    file.end(() => {
+      resolve(filePath);
+    });
   });
 }
 
