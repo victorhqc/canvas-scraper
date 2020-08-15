@@ -3,7 +3,12 @@ import { Browser, Page } from 'puppeteer';
 import chalk from 'chalk';
 import wait from './wait';
 import * as inquirer from 'inquirer';
-import { MissingElementError, buildGetElementHandle, navigateInNewPage } from './browser';
+import {
+  MissingElementError,
+  buildGetElementHandle,
+  navigateInNewPage,
+  findLinkByText,
+} from './browser';
 import logger from './logger';
 
 export async function getAvailableCourses(page: Page, retriedTimes = 0): Promise<Course[]> {
@@ -51,20 +56,25 @@ export async function navigateToCourse(
   courses: Course[],
   chosenCourse: ChosenCourse
 ): Promise<void> {
-  const getElement = buildGetElementHandle(page);
+  try {
+    const getElement = buildGetElementHandle(page);
 
-  const course = courses[chosenCourse.index];
-  chalk.blue(`Parsing ${chalk.bold.blue(course.name)} course`);
+    const course = courses[chosenCourse.index];
+    chalk.blue(`Parsing ${chalk.bold.blue(course.name)} course`);
 
-  const courseCard = await getElement(
-    `.ic-DashboardCard__box .ic-DashboardCard:nth-child(${chosenCourse.index + 1})`
-  );
-  await courseCard.click();
-  await page.waitForNavigation();
+    const courseCard = await getElement(
+      `.ic-DashboardCard__box .ic-DashboardCard:nth-child(${chosenCourse.index + 1})`
+    );
+    await courseCard.click();
+    await page.waitForNavigation();
 
-  const topicsListElement = await getElement('li.section a[title="Temas"]');
-  await topicsListElement.click();
-  await page.waitForNavigation();
+    const topicsListElement = await findLinkByText(page, 'Temas');
+    await topicsListElement.click();
+    await page.waitForNavigation();
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
 }
 
 export async function loadTopicsIframeFromCoursePage(browser: Browser, page: Page): Promise<Page> {

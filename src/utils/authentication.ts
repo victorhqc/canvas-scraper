@@ -20,16 +20,27 @@ export async function freshLogin(
 export async function auth(page: Page, username: string, password: string): Promise<void> {
   const getElement = buildGetElementHandle(page);
 
-  const usernameInput = await getElement('#pseudonym_session_unique_id');
-  const passwordInput = await getElement('#pseudonym_session_password');
+  try {
+    // Unfortunately, Canvas changed login page.
+    const loginButton = await getElement('.ic-app-header__menu-list-item a[href="/login"]');
+    await loginButton.click();
 
-  await usernameInput.type(username);
-  await passwordInput.type(password);
+    await page.waitFor('input[name="Password"]');
 
-  const submitButton = await getElement('.Button--login');
-  await submitButton.click();
+    const usernameInput = await getElement('#Username');
+    const passwordInput = await getElement('input[name="Password"]');
 
-  await page.waitFor('#dashboard').catch(e => {
-    throw new AuthenticationFailedError(e);
-  });
+    await usernameInput.type(username);
+    await passwordInput.type(password);
+
+    const submitButton = await getElement('#btn-acceder');
+    await submitButton.click();
+
+    await page.waitFor('#dashboard').catch(e => {
+      throw new AuthenticationFailedError(e);
+    });
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
 }

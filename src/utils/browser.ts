@@ -49,6 +49,22 @@ export function buildGetElementHandle(page: Page) {
   };
 }
 
+const escapeXpathString = (str: string): string => {
+  const splitedQuotes = str.replace(/'/g, `', "'", '`);
+  return `concat('${splitedQuotes}', '')`;
+};
+
+export async function findLinkByText(page: Page, text: string): Promise<ElementHandle> {
+  const escapedText = escapeXpathString(text);
+  const linkHandlers = await page.$x(`//a[contains(text(), ${escapedText})]`);
+
+  if (linkHandlers.length > 0) {
+    return linkHandlers[0];
+  } else {
+    throw new Error(`Link not found: ${text}`);
+  }
+}
+
 /**
  * Waits for an element to appear in page. It will try to fetch it every 250 ms. And will fail if
  * it doesn't succeeds before timeout.
